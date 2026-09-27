@@ -118,6 +118,7 @@ Run this migration once in a new project. If Supabase displays an error, stop an
 2. Open [0003_audit_and_job_search.sql](</D:/HireTrack/supabase/migrations/0003_audit_and_job_search.sql>), copy all its contents, and paste into the new query.
 3. Click **Run** once. This records sign-ins, job posting/status changes, interview updates, and sent messages, and limits the full audit view to placement officers.
 4. Run `0003` only after `0002` has completed successfully. If `0001` and `0002` were already run, apply only `0003`.
+5. If you applied an earlier copy of `0003`, run the current file again. It replaces its policies and triggers safely and includes the rule that blocks applications after a role's deadline.
 
 ## Part 5: Set the sign-in URLs in Supabase
 

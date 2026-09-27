@@ -48,15 +48,33 @@ export async function PATCH(request: Request) {
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return Response.json({ error: "Send a valid JSON request body." }, { status: 400 }); }
   const interviewId = typeof body.interviewId === "string" ? body.interviewId : "";
-  const internalNote = typeof body.internalNote === "string" ? body.internalNote.trim().slice(0, 5000) : "";
-  const candidateFeedback = typeof body.candidateFeedback === "string" ? body.candidateFeedback.trim().slice(0, 2000) : "";
-  const status = typeof body.status === "string" ? body.status : "completed";
-  if (!/^[0-9a-f-]{36}$/i.test(interviewId) || !["scheduled", "completed", "cancelled"].includes(status)) {
-    return Response.json({ error: "Provide a valid interview and status." }, { status: 422 });
+  if (!/^[0-9a-f-]{36}$/i.test(interviewId)) return Response.json({ error: "Provide a valid interview." }, { status: 422 });
+  const updates: Record<string, string | null> = { updated_at: new Date().toISOString() };
+  if (typeof body.title === "string") {
+    const title = body.title.trim();
+    if (title.length < 2 || title.length > 120) return Response.json({ error: "Interview title must be between 2 and 120 characters." }, { status: 422 });
+    updates.title = title;
   }
-  const { data, error } = await auth.supabase.from("interview_rounds").update({ candidate_feedback: candidateFeedback, status, updated_at: new Date().toISOString() }).eq("id", interviewId).select("*").single();
+  if (typeof body.scheduledAt === "string") {
+    if (!Number.isFinite(Date.parse(body.scheduledAt))) return Response.json({ error: "Provide a valid interview date and time." }, { status: 422 });
+    updates.scheduled_at = new Date(body.scheduledAt).toISOString();
+  }
+  if (typeof body.meetingUrl === "string") {
+    const meetingUrl = body.meetingUrl.trim();
+    if (meetingUrl && !/^https?:\/\//i.test(meetingUrl)) return Response.json({ error: "Meeting link must start with https:// or http://." }, { status: 422 });
+    updates.meeting_url = meetingUrl || null;
+  }
+  if (typeof body.candidateFeedback === "string") updates.candidate_feedback = body.candidateFeedback.trim().slice(0, 2000);
+  if (typeof body.status === "string") {
+    if (!["scheduled", "completed", "cancelled"].includes(body.status)) return Response.json({ error: "Choose a valid interview status." }, { status: 422 });
+    updates.status = body.status;
+  }
+  if (Object.keys(updates).length === 1 && typeof body.internalNote !== "string") return Response.json({ error: "Provide at least one interview field to update." }, { status: 422 });
+  const { data, error } = await auth.supabase.from("interview_rounds").update(updates).eq("id", interviewId).select("*").single();
   if (error) return Response.json({ error: error.message }, { status: 400 });
-  const { error: noteError } = await auth.supabase.from("interview_notes").upsert({ interview_id: interviewId, author_id: auth.userId, body: internalNote, updated_at: new Date().toISOString() }, { onConflict: "interview_id" });
-  if (noteError) return Response.json({ error: noteError.message }, { status: 400 });
+  if (typeof body.internalNote === "string") {
+    const { error: noteError } = await auth.supabase.from("interview_notes").upsert({ interview_id: interviewId, author_id: auth.userId, body: body.internalNote.trim().slice(0, 5000), updated_at: new Date().toISOString() }, { onConflict: "interview_id" });
+    if (noteError) return Response.json({ error: noteError.message }, { status: 400 });
+  }
   return Response.json({ data });
 }

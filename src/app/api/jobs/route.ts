@@ -39,8 +39,12 @@ export async function POST(request: Request) {
   const employmentType = typeof body.employmentType === "string" ? body.employmentType.trim() : "Full-time";
   const location = typeof body.location === "string" ? body.location.trim() : "Remote";
   const description = typeof body.description === "string" ? body.description.trim() : "";
+  const applicationDeadline = typeof body.applicationDeadline === "string" ? body.applicationDeadline.trim() : "";
+  const validDeadline = !applicationDeadline || (/^\d{4}-\d{2}-\d{2}$/.test(applicationDeadline)
+    && !Number.isNaN(Date.parse(`${applicationDeadline}T00:00:00.000Z`))
+    && new Date(`${applicationDeadline}T00:00:00.000Z`).toISOString().slice(0, 10) === applicationDeadline);
   const allowedEmploymentTypes = ["Full-time", "Internship", "Part-time", "Contract"];
-  if (title.length < 2 || title.length > 120 || (auth.role === "officer" && (companyName.length < 2 || companyName.length > 100)) || (auth.role === "recruiter" && !/^[0-9a-f-]{36}$/i.test(companyId)) || !allowedEmploymentTypes.includes(employmentType) || location.length > 200 || description.length > 10000) {
+  if (title.length < 2 || title.length > 120 || (auth.role === "officer" && (companyName.length < 2 || companyName.length > 100)) || (auth.role === "recruiter" && !/^[0-9a-f-]{36}$/i.test(companyId)) || !allowedEmploymentTypes.includes(employmentType) || location.length > 200 || description.length > 10000 || !validDeadline) {
     return Response.json({ error: "Check the role title, company, work type, location, and description fields." }, { status: 422 });
   }
   let resolvedCompanyId = companyId;
@@ -62,6 +66,7 @@ export async function POST(request: Request) {
     description,
     employment_type: employmentType,
     location: location || "Remote",
+    application_deadline: applicationDeadline || null,
     skill_tags: Array.isArray(body.skills) ? body.skills.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter((item) => item.length > 0 && item.length <= 80).slice(0, 30) : [],
     status: body.status === "draft" ? "draft" : "published",
   }).select("*, companies(name, logo_url)").single();

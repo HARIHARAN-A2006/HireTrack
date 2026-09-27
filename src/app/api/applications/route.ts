@@ -20,7 +20,13 @@ export async function POST(request: Request) {
   if (auth.role !== "student") return Response.json({ error: "Only student accounts can apply to opportunities." }, { status: 403 });
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return Response.json({ error: "Send a valid JSON request body." }, { status: 400 }); }
-  if (typeof body.jobId !== "string") return Response.json({ error: "A jobId is required." }, { status: 422 });
+  if (typeof body.jobId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.jobId)) return Response.json({ error: "Provide a valid opportunity ID." }, { status: 422 });
+  const { data: job, error: jobError } = await auth.supabase.from("jobs").select("id, status, application_deadline").eq("id", body.jobId).maybeSingle();
+  if (jobError) return Response.json({ error: jobError.message }, { status: 400 });
+  if (!job) return Response.json({ error: "This opportunity is no longer available." }, { status: 404 });
+  if (job.status !== "published" || (job.application_deadline && job.application_deadline < new Date().toISOString().slice(0, 10))) {
+    return Response.json({ error: "The application deadline has passed or this opportunity is closed." }, { status: 409 });
+  }
   const { data, error } = await auth.supabase.from("applications").insert({
     job_id: body.jobId, student_id: auth.userId,
     cover_note: typeof body.coverNote === "string" ? body.coverNote.trim().slice(0, 3000) : "",

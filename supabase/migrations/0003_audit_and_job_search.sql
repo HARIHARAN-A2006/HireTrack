@@ -30,6 +30,20 @@ create policy "Placement officers manage companies" on public.companies for all 
   using (public.current_app_role() = 'officer')
   with check (public.current_app_role() = 'officer');
 
+-- Enforce published-job deadlines even when a student bypasses the app API.
+drop policy if exists "Students apply to published jobs" on public.applications;
+drop policy if exists "Students apply to published jobs before deadline" on public.applications;
+create policy "Students apply to published jobs before deadline" on public.applications for insert to authenticated
+  with check (
+    student_id = auth.uid()
+    and public.current_app_role() = 'student'
+    and exists (
+      select 1 from public.jobs
+      where jobs.id = job_id and jobs.status = 'published'
+        and (jobs.application_deadline is null or jobs.application_deadline >= current_date)
+    )
+  );
+
 -- Keep interview ownership and round linkage immutable through browser access.
 drop policy if exists "Assigned staff manage interview rounds" on public.interview_rounds;
 drop policy if exists "Staff insert interview rounds" on public.interview_rounds;
