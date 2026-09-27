@@ -8,6 +8,11 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #a3d7c7; outline-offset: 2px; }
 a { color: inherit; text-decoration: none; }
+.workspace-top > .brand { margin: 0; flex: 0 0 auto; align-self: center; }
+.workspace-top nav { flex: 1 1 auto; align-self: center; }
+.theme-toggle { position: fixed; z-index: 1000; top: 13px; right: 15px; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #dfe7e1; border-radius: 9px; color: #42534a; background: #fff; box-shadow: 0 2px 10px #1b2a2018; }
+.theme-toggle:hover { background: #eff5f0; }
+.theme-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .app-shell { min-height: 100vh; }
 .sidebar { width: 244px; position: fixed; inset: 0 auto 0 0; background: #fff; border-right: 1px solid var(--line); display: flex; flex-direction: column; z-index: 20; padding: 26px 16px 15px; }
 .brand { height: 36px; display: flex; align-items: center; gap: 10px; margin: 0 10px 38px; font-size: 20px; letter-spacing: -1.1px; font-weight: 750; color: #263c36; }
@@ -105,8 +110,9 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 620px) { .workspace-top { position: static; }.workspace-top nav { gap: 1px; }.workspace-tab { padding: 8px 7px; font-size: 9px; }.workspace-user { font-size: 9px; }.workspace-body { padding: 23px 12px 35px; }.workspace-body > h1 { font-size: 25px; }.workspace-card-head { align-items: flex-start; flex-direction: column; }.workspace-filters { width: 100%; }.workspace-filters input,.workspace-search { width: 100%; }.workspace-filters select { max-width: 130px; }.opportunity-form,.team-assign-form { grid-template-columns: 1fr; }.opportunity-form > label:nth-child(5),.opportunity-form > label:nth-child(6),.opportunity-form .form-row { grid-column: auto; }.workspace-metrics { gap: 7px; }.workspace-metrics article { padding: 12px; }.workspace-metrics strong { font-size: 20px; }.interview-card { grid-template-columns: 1fr; }.message-center { grid-template-columns: 1fr; }.message-list { max-height: 190px; overflow-y: auto; border-right: 0; border-bottom: 1px solid #edf0ee; }.message-history { min-height: 220px; }.message-compose { align-items: stretch; flex-direction: column; }.message-compose .primary-button { align-self: flex-end; }.student-top-right { flex-wrap: wrap; } }
 
 /* Site-wide dark theme */
-:root { color-scheme: dark; --ink: #e7eee9; --muted: #9baaa1; --line: #303a35; --paper: #111613; --green: #388b72; --green-dark: #2e755f; }
-html, body { background: #111613; color: #e7eee9; }
+:root { color-scheme: light; --ink: #202624; --muted: #858e89; --line: #e9ece9; --paper: #fafbf9; --green: #347b6b; --green-dark: #286557; }
+:root[data-theme="dark"] { color-scheme: dark; background: #111613; color: #e7eee9; --ink: #e7eee9; --muted: #9baaa1; --line: #303a35; --paper: #111613; --green: #388b72; --green-dark: #2e755f; }
+body { background: #111613; color: #e7eee9; }
 body { background: #111613; color: #e7eee9; }
 .sidebar,.topbar,.stat-card,.panel,.workspace-switch,.season-pill,.workspace-card,.workspace-candidate-card,.workspace-metrics article,.workspace-dialog,.message-center,.student-top,.student-section,.job-detail-facts span,.job-modal,.secondary-button,.toast,.auth-card { background-color: #191f1c; color: #e7eee9; border-color: #303a35; }
 .topbar { background: rgba(25,31,28,.94); }
@@ -159,16 +165,30 @@ body { background: #111613; color: #e7eee9; }
   .message-history { max-height: 50vh; }
 }
 
-/* Keep the resume controls dark even though their base rules are defined later in the stylesheet. */
-.resume-current { color: #dce6df; background: #202824; border-color: #36413b; }
-.resume-current strong { color: #edf4ef; }
-.resume-upload-form label { color: #c4d0c7; }
-.resume-upload-form input[type="file"] { color: #e2ebe4; background: #111613; border-color: #3a4640; }
-.resume-card > p { color: #9aa89f; }
-.resume-current a,.resume-remove { color: #83d4b1; }
-.student-stage.stage-screening,.stage-select.stage-screening { color: #efd39b !important; background: #3b3324 !important; }
-.student-stage.stage-interview,.stage-select.stage-interview { color: #c3c8f1 !important; background: #2d2d42 !important; }
-.student-stage.stage-offer,.stage-select.stage-offer { color: #a6e3bf !important; background: #203b2c !important; }
-.student-stage.stage-rejected,.student-stage.stage-withdrawn,.stage-select.stage-rejected,.stage-select.stage-withdrawn { color: #f0b0ad !important; background: #3c2929 !important; }
-.stage-select.stage-applied,.student-stage.stage-applied { color: #bdc8c0 !important; background: #29312d !important; }
+:root[data-theme="dark"] .theme-toggle { border-color: #3a4640; color: #f1d58b; background: #191f1c; box-shadow: 0 2px 10px #0005; }
+:root[data-theme="dark"] .theme-toggle:hover { background: #26312b; }
+:root[data-theme="dark"] .resume-current { color: #dce6df; background: #202824; border-color: #36413b; }
+:root[data-theme="dark"] .resume-current strong { color: #edf4ef; }
+:root[data-theme="dark"] .resume-upload-form label { color: #c4d0c7; }
+:root[data-theme="dark"] .resume-upload-form input[type="file"] { color: #e2ebe4; background: #111613; border-color: #3a4640; }
+:root[data-theme="dark"] .resume-card > p { color: #9aa89f; }
+:root[data-theme="dark"] .resume-current a,:root[data-theme="dark"] .resume-remove { color: #83d4b1; }
+:root[data-theme="dark"] .student-stage.stage-screening,:root[data-theme="dark"] .stage-select.stage-screening { color: #efd39b !important; background: #3b3324 !important; }
+:root[data-theme="dark"] .student-stage.stage-interview,:root[data-theme="dark"] .stage-select.stage-interview { color: #c3c8f1 !important; background: #2d2d42 !important; }
+:root[data-theme="dark"] .student-stage.stage-offer,:root[data-theme="dark"] .stage-select.stage-offer { color: #a6e3bf !important; background: #203b2c !important; }
+:root[data-theme="dark"] .student-stage.stage-rejected,:root[data-theme="dark"] .student-stage.stage-withdrawn,:root[data-theme="dark"] .stage-select.stage-rejected,:root[data-theme="dark"] .stage-select.stage-withdrawn { color: #f0b0ad !important; background: #3c2929 !important; }
+:root[data-theme="dark"] .stage-select.stage-applied,:root[data-theme="dark"] .student-stage.stage-applied { color: #bdc8c0 !important; background: #29312d !important; }
+
+@media (min-width: 621px) {
+  .topbar { padding-right: 62px; }
+  .workspace-top { padding-right: 62px; }
+  .student-top { padding-right: max(66px,calc((100vw - 1060px)/2 + 50px)); }
+}
+@media (max-width: 620px) {
+  .theme-toggle { top: 9px; right: 10px; width: 34px; height: 34px; }
+  .topbar { padding-right: 53px; }
+  .workspace-top { padding-right: 54px; }
+  .student-top { padding-right: 54px; }
+}
+
 .resume-card h2 { margin: 7px 0; font-size: 16px; letter-spacing: -.35px; }.resume-card > p { color: #89948c; font-size: 10px; line-height: 1.6; }.resume-upload-form { display: grid; gap: 10px; margin-top: 15px; }.resume-upload-form label { display: grid; gap: 7px; color: #536059; font-size: 10px; font-weight: 600; }.resume-upload-form input[type="file"] { width: 100%; min-height: 38px; padding: 7px; border: 1px solid #e1e7e3; border-radius: 6px; color: #56635a; background: #fff; font: inherit; font-size: 10px; }.resume-upload-form > small { color: #79877d; font-size: 9px; overflow-wrap: anywhere; }.resume-upload-form .primary-button { justify-self: start; }.resume-privacy { display: block; margin-top: 11px; color: #89948c; font-size: 9px; line-height: 1.5; }.resume-current { display: grid; gap: 6px; padding: 10px; border: 1px solid #e7ece8; border-radius: 6px; background: #fafcfb; }.resume-current strong { overflow-wrap: anywhere; color: #45534a; font-size: 10px; }.resume-current a,.resume-remove { justify-self: start; color: #367b68; font-size: 9px; }.resume-remove { border: 0; padding: 0; background: transparent; }
