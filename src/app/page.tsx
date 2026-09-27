@@ -4,26 +4,20 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient, getSupabaseConfig } from "@/lib/supabase";
 
-type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Rejected";
-type Candidate = { id: number | string; name: string; initials: string; role: string; company: string; date: string; status: Status; color: string; score: number };
-type Job = { id: number | string; title: string; company: string; type: string; location: string; applicants: number; color: string; logo: string };
-
-const startingApplications: Candidate[] = [
-  { id: 1, name: "Aarav Mehta", initials: "AM", role: "Product Designer", company: "Figma", date: "Today, 10:24 AM", status: "Interview", color: "lilac", score: 92 },
-  { id: 2, name: "Diya Sharma", initials: "DS", role: "Frontend Engineer", company: "Vercel", date: "Today, 9:12 AM", status: "Screening", color: "peach", score: 88 },
-  { id: 3, name: "Kabir Rao", initials: "KR", role: "Product Designer", company: "Linear", date: "Yesterday", status: "Applied", color: "mint", score: 84 },
-  { id: 4, name: "Ananya Iyer", initials: "AI", role: "Data Analyst", company: "Notion", date: "Yesterday", status: "Offer", color: "blue", score: 96 },
-  { id: 5, name: "Rohan Kapoor", initials: "RK", role: "Frontend Engineer", company: "Figma", date: "Sep 24, 2026", status: "Screening", color: "rose", score: 79 },
+type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Rejected" | "Withdrawn";
+type Candidate = { id: string; name: string; initials: string; role: string; company: string; date: string; status: Status; color: string; score: number };
+type Job = { id: string; title: string; company: string; type: string; location: string; applicants: number; color: string; logo: string; status: string };
+type Activity = { id: string; candidate: string; role: string; company: string; detail: string; date: string };
+type JoinedActivity = { id: string; from_stage: string | null; to_stage: string; created_at: string; applications?: { profiles?: { full_name?: string } | { full_name?: string }[]; jobs?: { title?: string; companies?: { name?: string } | { name?: string }[] } | { title?: string; companies?: { name?: string } | { name?: string }[] } } | { profiles?: { full_name?: string } | { full_name?: string }[]; jobs?: { title?: string; companies?: { name?: string } | { name?: string }[] } | { title?: string; companies?: { name?: string } | { name?: string }[] } }[] };
+const navItems = [
+  { label: "Overview", href: "/", icon: "grid" },
+  { label: "Applications", href: "/applications", icon: "briefcase" },
+  { label: "Opportunities", href: "/opportunities", icon: "briefcase" },
+  { label: "Candidates", href: "/candidates", icon: "users" },
+  { label: "Messages", href: "/messages", icon: "message" },
+  { label: "Recruiter access", href: "/team", icon: "users" },
 ];
-
-const startingJobs: Job[] = [
-  { id: 1, title: "Product Designer", company: "Figma", type: "Full-time", location: "Bengaluru · Hybrid", applicants: 28, color: "job-purple", logo: "F" },
-  { id: 2, title: "Frontend Engineer", company: "Vercel", type: "Internship", location: "Remote · India", applicants: 42, color: "job-black", logo: "V" },
-  { id: 3, title: "Data Analyst", company: "Notion", type: "Full-time", location: "Mumbai · On-site", applicants: 19, color: "job-yellow", logo: "N" },
-];
-
-const navItems = ["Overview", "Applications", "Opportunities", "Candidates", "Messages"];
-const statuses: Status[] = ["Applied", "Screening", "Interview", "Offer", "Rejected"];
+const statuses: Status[] = ["Applied", "Screening", "Interview", "Offer", "Rejected", "Withdrawn"];
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
   const paths: Record<string, ReactNode> = {
@@ -47,11 +41,12 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 
 export default function Home() {
   const router = useRouter();
-  const [activeNav, setActiveNav] = useState("Overview");
+  const [activeNav] = useState("Overview");
   const [activeTab, setActiveTab] = useState("All applications");
   const [search, setSearch] = useState("");
-  const [applications, setApplications] = useState(startingApplications);
-  const [jobs, setJobs] = useState(startingJobs);
+  const [applications, setApplications] = useState<Candidate[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [jobModal, setJobModal] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
@@ -68,30 +63,41 @@ export default function Home() {
       const session = sessionData.session;
       const { data: profile } = await supabase.from("profiles").select("role, full_name").eq("id", session.user.id).single();
       if (profile?.role === "student") { router.replace("/student"); return; }
-      if (profile?.role !== "officer" && profile?.role !== "recruiter") { router.replace("/login"); return; }
+      if (profile?.role === "recruiter") { router.replace("/recruiter"); return; }
+      if (profile?.role !== "officer") { router.replace("/login"); return; }
       if (profile.full_name) setOfficerName(profile.full_name);
       setAccessToken(session.access_token);
       setLiveMode(true);
       const headers = { Authorization: `Bearer ${session.access_token}` };
-      const [jobsResponse, appsResponse] = await Promise.all([fetch("/api/jobs", { headers }), fetch("/api/applications", { headers })]);
+      const [jobsResponse, appsResponse, activityResponse] = await Promise.all([fetch("/api/jobs", { headers }), fetch("/api/applications", { headers }), fetch("/api/activity", { headers })]);
       if (jobsResponse.ok) {
         const payload = await jobsResponse.json();
-        setJobs((payload.data || []).map((row: { id: string; title: string; employment_type: string; location: string; companies?: { name?: string } | { name?: string }[]; applications?: { count: number }[] }) => {
+        setJobs((payload.data || []).map((row: { id: string; title: string; employment_type: string; location: string; status: string; companies?: { name?: string } | { name?: string }[]; applications?: { count: number }[] }) => {
           const company = Array.isArray(row.companies) ? row.companies[0]?.name : row.companies?.name;
-          return { id: row.id, title: row.title, company: company || "Campus partner", type: row.employment_type, location: row.location, applicants: row.applications?.[0]?.count || 0, color: "job-green", logo: (company || "H").slice(0, 1).toUpperCase() };
+          return { id: row.id, title: row.title, company: company || "Campus partner", type: row.employment_type, location: row.location, applicants: row.applications?.[0]?.count || 0, color: "job-green", logo: (company || "H").slice(0, 1).toUpperCase(), status: row.status };
         }));
       }
       if (appsResponse.ok) {
         const payload = await appsResponse.json();
-        const colors = ["lilac", "peach", "mint", "blue", "rose"];
-        setApplications((payload.data || []).map((row: { id: string; stage: string; applied_at: string; profiles?: { full_name?: string } | { full_name?: string }[]; jobs?: { title?: string; companies?: { name?: string } | { name?: string }[] } | { title?: string; companies?: { name?: string } | { name?: string }[] } }, index: number) => {
+        setApplications((payload.data || []).map((row: { id: string; stage: string; applied_at: string; profiles?: { full_name?: string } | { full_name?: string }[]; jobs?: { title?: string; companies?: { name?: string } | { name?: string }[] } | { title?: string; companies?: { name?: string } | { name?: string }[] } }) => {
           const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
           const job = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs;
           const company = Array.isArray(job?.companies) ? job.companies[0]?.name : job?.companies?.name;
           const fullName = profile?.full_name || "Student";
           const rawStage = row.stage.charAt(0).toUpperCase() + row.stage.slice(1);
-          const stage: Status = ["Applied", "Screening", "Interview", "Offer", "Rejected"].includes(rawStage) ? rawStage as Status : "Applied";
-          return { id: row.id, name: fullName, initials: fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(), role: job?.title || "Opportunity", company: company || "Campus partner", date: new Date(row.applied_at).toLocaleDateString(), status: stage, color: colors[index % colors.length], score: 0 };
+          const stage: Status = statuses.includes(rawStage as Status) ? rawStage as Status : "Applied";
+          return { id: row.id, name: fullName, initials: fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(), role: job?.title || "Opportunity", company: company || "Campus partner", date: new Date(row.applied_at).toLocaleDateString(), status: stage, color: "mint", score: 0 };
+        }));
+      }
+      if (activityResponse.ok) {
+        const payload = await activityResponse.json();
+        setActivity((payload.data || []).map((row: JoinedActivity) => {
+          const app = Array.isArray(row.applications) ? row.applications[0] : row.applications;
+          const profile = Array.isArray(app?.profiles) ? app.profiles[0] : app?.profiles;
+          const job = Array.isArray(app?.jobs) ? app.jobs[0] : app?.jobs;
+          const company = Array.isArray(job?.companies) ? job.companies[0]?.name : job?.companies?.name;
+          const stage = row.to_stage.charAt(0).toUpperCase() + row.to_stage.slice(1);
+          return { id: row.id, candidate: profile?.full_name || "Candidate", role: job?.title || "Opportunity", company: company || "Campus partner", detail: row.from_stage ? `moved from ${row.from_stage} to ${stage}` : "submitted an application", date: new Date(row.created_at).toLocaleString() };
         }));
       }
     })().catch(() => setNotice("Could not load live placement data. Check your Supabase settings."));
@@ -105,15 +111,16 @@ export default function Home() {
   const interviewCount = applications.filter((app) => app.status === "Interview").length;
   const offerCount = applications.filter((app) => app.status === "Offer").length;
   const interviewShare = applications.length ? Math.round(interviewCount / applications.length * 100) : 0;
+  const openJobs = jobs.filter((job) => job.status === "published");
+  const companyCount = new Set(jobs.map((job) => job.company)).size;
+  const todayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).toUpperCase();
 
-  function updateStatus(id: number | string, status: Status) {
+  async function updateStatus(id: string, status: Status) {
+    const response = await fetch("/api/applications", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ applicationId: id, stage: status.toLowerCase() }) });
+    const payload = await response.json();
+    if (!response.ok) { setNotice(payload.error || "Could not save this update."); return; }
     setApplications((current) => current.map((app) => app.id === id ? { ...app, status } : app));
-    if (liveMode) {
-      void fetch("/api/applications", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ applicationId: id, stage: status.toLowerCase() }) }).then(async (response) => {
-        if (!response.ok) { const payload = await response.json(); setNotice(payload.error || "Could not save this update."); }
-      });
-    }
-    setNotice("Candidate stage updated");
+    setNotice("Candidate stage updated and saved.");
     window.setTimeout(() => setNotice(""), 2600);
   }
 
@@ -123,33 +130,31 @@ export default function Home() {
     const title = String(data.get("title") || "").trim();
     const company = String(data.get("company") || "").trim();
     if (!title || !company) return;
-    if (liveMode) {
-      const response = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ title, company, employmentType: data.get("type"), location: data.get("location") }) });
-      const payload = await response.json();
-      if (!response.ok) { setNotice(payload.error || "Could not publish this opportunity."); return; }
-      const row = payload.data;
-      setJobs((current) => [{ id: row.id, title: row.title, company, type: row.employment_type, location: row.location, applicants: 0, color: "job-green", logo: company.slice(0, 1).toUpperCase() }, ...current]);
-      setJobModal(false); setNotice("Opportunity published"); window.setTimeout(() => setNotice(""), 2600); return;
-    }
-    setJobs((current) => [{ id: Date.now(), title, company, type: String(data.get("type") || "Full-time"), location: String(data.get("location") || "Remote"), applicants: 0, color: "job-green", logo: company.slice(0, 1).toUpperCase() }, ...current]);
+    const response = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ title, company, employmentType: data.get("type"), location: data.get("location") }) });
+    const payload = await response.json();
+    if (!response.ok) { setNotice(payload.error || "Could not publish this opportunity."); return; }
+    const row = payload.data;
+    setJobs((current) => [{ id: row.id, title: row.title, company, type: row.employment_type, location: row.location, applicants: 0, color: "job-green", logo: company.slice(0, 1).toUpperCase(), status: row.status }, ...current]);
     setJobModal(false);
-    setNotice("Opportunity added to your placements");
+    setNotice("Opportunity published and saved.");
     window.setTimeout(() => setNotice(""), 2600);
   }
+
+  if (!getSupabaseConfig()) return <main className="auth-page"><div className="auth-card"><a className="brand auth-brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a><div className="auth-eyebrow">PLACEMENT WORKSPACE</div><h1>Connect your database<span className="heading-period">.</span></h1><p className="auth-subtitle">The dashboard needs Supabase configured so candidates, applications, and updates are real and saved. Follow the environment setup in SETUP_GUIDE.md.</p><a className="primary-button auth-submit auth-link" href="/login">Continue to sign in</a></div></main>;
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? "sidebar-open" : ""}`}>
-        <a className="brand" href="#home" onClick={() => setActiveNav("Overview")}><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a>
+        <a className="brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a>
         <div className="workspace-label">WORKSPACE</div>
         <button className="workspace-switch"><span className="workspace-icon">B</span><span className="workspace-copy"><strong>BHARATH INSTITUTE OF HIGHER EDUCATION AND RESEARCH</strong><small>Placement team</small></span><Icon name="chevron" size={15}/></button>
         <div className="nav-label">MENU</div>
         <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map((item, index) => <button key={item} onClick={() => { setActiveNav(item); setMobileMenu(false); }} className={`nav-item ${activeNav === item ? "nav-active" : ""}`}><Icon name={["grid", "briefcase", "briefcase", "users", "message"][index]}/><span>{item}</span>{item === "Messages" && <span className="nav-count">3</span>}</button>)}
+          {navItems.map((item) => <a key={item.href} href={item.href} onClick={() => setMobileMenu(false)} className={`nav-item ${activeNav === item.label ? "nav-active" : ""}`}><Icon name={item.icon}/><span>{item.label}</span></a>)}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-tip"><div className="tip-icon"><Icon name="spark" size={16}/></div><strong>Make every hire count.</strong><p>Your placement season is looking bright. Keep your team in the loop.</p><button onClick={() => setNotice("Invite link copied to clipboard")}>Invite your team <Icon name="arrow" size={14}/></button></div>
-          <button className="profile-switch" onClick={async () => { if (liveMode) { await createBrowserSupabaseClient().auth.signOut(); router.replace("/login"); } else setNotice("Demo dashboard · configure Supabase to sign in."); }}><span className="avatar avatar-teal">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><span className="workspace-copy"><strong>{officerName}</strong><small>{liveMode ? "Placement officer · Sign out" : "Placement officer · Demo"}</small></span><Icon name="dots" size={18}/></button>
+          <div className="sidebar-tip"><div className="tip-icon"><Icon name="spark" size={16}/></div><strong>Recruiter workspace access</strong><p>Assign company recruiters and keep candidate access scoped to each company.</p><a href="/team">Manage recruiter access <Icon name="arrow" size={14}/></a></div>
+          <button className="profile-switch" onClick={async () => { await createBrowserSupabaseClient().auth.signOut(); router.replace("/login"); }}><span className="avatar avatar-teal">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><span className="workspace-copy"><strong>{officerName}</strong><small>Placement officer · Sign out</small></span><Icon name="dots" size={18}/></button>
         </div>
       </aside>
 
@@ -157,31 +162,31 @@ export default function Home() {
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Toggle menu"><Icon name="menu"/></button>
           <div className="breadcrumb"><span>Workspace</span><span className="crumb-sep">/</span><strong>{activeNav}</strong></div>
-          <div className="top-actions"><div className="season-pill"><span className="live-dot"/> Fall placement 2026</div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setNotice("You’re all caught up") }><Icon name="bell"/><span/></button><span className="avatar avatar-teal top-avatar">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span></div>
+          <div className="top-actions"><div className="season-pill"><span className="live-dot"/> Fall placement 2026</div><a className="icon-button" aria-label="Messages" href="/messages"><Icon name="message"/></a><span className="avatar avatar-teal top-avatar">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span></div>
         </header>
 
         <div className="page-content">
-          <section className="welcome-row"><div><div className="eyebrow">SUNDAY, SEPTEMBER 27, 2026 <span className="eyebrow-spark">✳</span></div><h1>{activeNav === "Overview" ? `Good morning, ${officerName.split(/\s+/)[0]}` : activeNav}<span className="heading-period">.</span></h1><p className="page-subtitle">Here&apos;s what&apos;s happening across your placements today.</p></div><button className="primary-button" onClick={() => setJobModal(true)}><Icon name="plus" size={17}/> Post an opportunity</button></section>
+          <section className="welcome-row"><div><div className="eyebrow">{todayLabel} <span className="eyebrow-spark">✳</span></div><h1>Good morning, {officerName.split(/\s+/)[0]}<span className="heading-period">.</span></h1><p className="page-subtitle">Here&apos;s what&apos;s happening across your placements today.</p></div><button className="primary-button" onClick={() => setJobModal(true)}><Icon name="plus" size={17}/> Post an opportunity</button></section>
 
           <section className="stats-grid" aria-label="Placement overview">
-            <article className="stat-card stat-highlight"><div className="stat-top"><span className="stat-label">Active opportunities</span><span className="stat-icon stat-icon-green"><Icon name="briefcase" size={17}/></span></div><div className="stat-value">{String(jobs.length).padStart(2, "0")}<span className="stat-trend"><span>↗</span> 2 this month</span></div><div className="stat-foot"><span className="mini-bars"><i/><i/><i/><i/><i/><i/><i/></span><span>Across 8 companies</span></div></article>
-            <article className="stat-card"><div className="stat-top"><span className="stat-label">Applications received</span><span className="stat-icon stat-icon-lilac"><Icon name="users" size={17}/></span></div><div className="stat-value">{applications.length}<span className="stat-trend trend-soft">this season</span></div><div className="stat-foot"><span className="stat-muted">across all roles</span><span className="avatar-stack"><i>AM</i><i>DS</i><i>KR</i><b>+{Math.max(applications.length - 3, 0)}</b></span></div></article>
+            <article className="stat-card stat-highlight"><div className="stat-top"><span className="stat-label">Active opportunities</span><span className="stat-icon stat-icon-green"><Icon name="briefcase" size={17}/></span></div><div className="stat-value">{String(openJobs.length).padStart(2, "0")}<span className="stat-trend trend-soft">published</span></div><div className="stat-foot"><span className="mini-bars"><i/><i/><i/><i/><i/><i/><i/></span><span>Across {companyCount} companies</span></div></article>
+            <article className="stat-card"><div className="stat-top"><span className="stat-label">Applications received</span><span className="stat-icon stat-icon-lilac"><Icon name="users" size={17}/></span></div><div className="stat-value">{applications.length}<span className="stat-trend trend-soft">total</span></div><div className="stat-foot"><span className="stat-muted">across all roles</span><span className="stat-muted">Live records</span></div></article>
             <article className="stat-card"><div className="stat-top"><span className="stat-label">In interview stage</span><span className="stat-icon stat-icon-peach"><Icon name="message" size={17}/></span></div><div className="stat-value">{interviewCount}<span className="stat-trend trend-soft">in progress</span></div><div className="stat-foot"><div className="progress-track"><i style={{ width: `${interviewShare}%` }}/></div><span>{interviewShare}% of candidates</span></div></article>
-            <article className="stat-card"><div className="stat-top"><span className="stat-label">Offers extended</span><span className="stat-icon stat-icon-blue">✳</span></div><div className="stat-value">{offerCount}<span className="stat-trend trend-soft">this season</span></div><div className="stat-foot"><span className="offer-avatars"><i>AI</i><i>VP</i><i>+{Math.max(offerCount - 2, 0)}</i></span><span>candidate offers</span></div></article>
+            <article className="stat-card"><div className="stat-top"><span className="stat-label">Offers extended</span><span className="stat-icon stat-icon-blue">✳</span></div><div className="stat-value">{offerCount}<span className="stat-trend trend-soft">total</span></div><div className="stat-foot"><span className="stat-muted">from real application records</span></div></article>
           </section>
 
           <section className="content-grid">
             <article className="panel applications-panel">
-              <div className="panel-heading"><div><div className="section-kicker">THE PIPELINE</div><h2>Recent applications <span className="heading-count">{applications.length}</span></h2></div><button className="text-button" onClick={() => setActiveNav("Applications")}>View all <Icon name="arrow" size={15}/></button></div>
+              <div className="panel-heading"><div><div className="section-kicker">THE PIPELINE</div><h2>Recent applications <span className="heading-count">{applications.length}</span></h2></div><a className="text-button" href="/applications">View all <Icon name="arrow" size={15}/></a></div>
               <div className="table-toolbar"><div className="tabs">{["All applications", "Screening", "Interview", "Offer"].map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={activeTab === tab ? "tab-active" : ""}>{tab}{tab === "All applications" && <span>{applications.length}</span>}</button>)}</div><label className="search-box"><Icon name="search" size={16}/><input placeholder="Search candidates" value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search candidates"/><kbd>⌘ K</kbd></label></div>
-              <div className="table-scroll"><table className="applications-table"><thead><tr><th>Candidate</th><th>Applied for</th><th>Applied</th><th>Stage</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{filteredApplications.map((app) => <tr key={app.id}><td><div className="candidate-cell"><span className={`avatar avatar-${app.color}`}>{app.initials}</span><span><strong>{app.name}</strong><small><span className="candidate-score">✦ {app.score}</span> match score</small></span></div></td><td><strong className="role-title">{app.role}</strong><small className="company-name">{app.company}</small></td><td className="date-cell">{app.date}</td><td><label className={`status-pill status-${app.status.toLowerCase()}`}><span/>{app.status}<select value={app.status} aria-label={`Update ${app.name} stage`} onChange={(event) => updateStatus(app.id, event.target.value as Status)}><option value="Applied">Applied</option><option value="Screening">Screening</option><option value="Interview">Interview</option><option value="Offer">Offer</option><option value="Rejected">Rejected</option></select></label></td><td><button className="row-more" aria-label={`More options for ${app.name}`} onClick={() => setNotice(`${app.name} · ${app.role}`)}><Icon name="dots"/></button></td></tr>)}</tbody></table>{filteredApplications.length === 0 && <div className="empty-state">No applications match your search.</div>}</div>
-              <div className="table-footer"><span>Showing <strong>{filteredApplications.length}</strong> of <strong>{applications.length}</strong> candidates</span><button onClick={() => setActiveNav("Applications")}>Go to applications <Icon name="arrow" size={14}/></button></div>
+              <div className="table-scroll"><table className="applications-table"><thead><tr><th>Candidate</th><th>Applied for</th><th>Applied</th><th>Stage</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{filteredApplications.slice(0, 5).map((app) => <tr key={app.id}><td><div className="candidate-cell"><span className={`avatar avatar-${app.color}`}>{app.initials}</span><span><strong>{app.name}</strong><small>Candidate</small></span></div></td><td><strong className="role-title">{app.role}</strong><small className="company-name">{app.company}</small></td><td className="date-cell">{app.date}</td><td><label className={`status-pill status-${app.status.toLowerCase()}`}><span/>{app.status}<select value={app.status} aria-label={`Update ${app.name} stage`} onChange={(event) => updateStatus(app.id, event.target.value as Status)}><option value="Applied">Applied</option><option value="Screening">Screening</option><option value="Interview">Interview</option><option value="Offer">Offer</option><option value="Rejected">Rejected</option><option value="Withdrawn">Withdrawn</option></select></label></td><td><a className="row-more" aria-label={`Message ${app.name}`} href={`/messages?applicationId=${app.id}`}><Icon name="message"/></a></td></tr>)}</tbody></table>{filteredApplications.length === 0 && <div className="empty-state">{applications.length ? "No applications match your search." : "No candidates have applied to your published opportunities yet."}</div>}</div>
+              <div className="table-footer"><span>Showing <strong>{Math.min(filteredApplications.length, 5)}</strong> of <strong>{applications.length}</strong> candidates</span><a href="/applications">Go to applications <Icon name="arrow" size={14}/></a></div>
             </article>
 
-            <article className="panel activity-panel"><div className="panel-heading"><div><div className="section-kicker">LIVE UPDATES</div><h2>Activity</h2></div><button className="icon-button small-icon" aria-label="More activity options"><Icon name="dots"/></button></div><div className="activity-list"><div className="activity-item"><span className="activity-avatar avatar-lilac">AM</span><div><p><strong>Aarav Mehta</strong> moved to <b>Interview</b></p><span>Product Designer · Figma</span><small>12 min ago</small></div><span className="activity-line"/></div><div className="activity-item"><span className="activity-avatar company-dot">V</span><div><p><strong>Vercel</strong> posted a new opportunity</p><span>Frontend Engineer · Internship</span><small>1 hour ago</small></div><span className="activity-line"/></div><div className="activity-item"><span className="activity-avatar avatar-peach">AI</span><div><p><strong>Ananya Iyer</strong> received an offer 🎉</p><span>Data Analyst · Notion</span><small>3 hours ago</small></div><span className="activity-line"/></div><div className="activity-item"><span className="activity-avatar avatar-mint">KR</span><div><p><strong>Kabir Rao</strong> completed their profile</p><span>Profile strength · 92%</span><small>Yesterday</small></div></div></div><button className="activity-link" onClick={() => setActiveNav("Applications")}>See all activity <Icon name="arrow" size={14}/></button></article>
+            <article className="panel activity-panel"><div className="panel-heading"><div><div className="section-kicker">LIVE UPDATES</div><h2>Application activity</h2></div></div><div className="activity-list">{activity.slice(0, 5).map((item) => <div className="activity-item" key={item.id}><span className="activity-avatar avatar-mint">{item.candidate.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><div><p><strong>{item.candidate}</strong> {item.detail}</p><span>{item.role} · {item.company}</span><small>{item.date}</small></div><span className="activity-line"/></div>)}{!activity.length && <div className="empty-state">Application updates will appear here as candidates apply and progress.</div>}</div><a className="activity-link" href="/applications">Open applications <Icon name="arrow" size={14}/></a></article>
           </section>
 
-          <section className="panel jobs-panel"><div className="panel-heading"><div><div className="section-kicker">OPEN ROLES</div><h2>Opportunities <span className="heading-count">{jobs.length}</span></h2></div><button className="text-button" onClick={() => setJobModal(true)}><Icon name="plus" size={15}/> Add opportunity</button></div><div className="job-grid">{jobs.slice(0, 3).map((job) => <article className="job-card" key={job.id}><div className="job-card-top"><span className={`company-logo ${job.color}`}>{job.logo}</span><button className="row-more" aria-label={`Options for ${job.title}`} onClick={() => setNotice(`${job.title} at ${job.company}`)}><Icon name="dots"/></button></div><h3>{job.title}</h3><p className="job-company">{job.company}<span>·</span>{job.type}</p><p className="job-location">{job.location}</p><div className="job-card-bottom"><span className="job-applicant-stack"><i>AM</i><i>DS</i><i>+{Math.max(0, job.applicants - 2)}</i></span><span><strong>{job.applicants}</strong> applicants</span><button aria-label={`View ${job.title}`} onClick={() => { setActiveNav("Opportunities"); setNotice(`${job.title} · ${job.applicants} applicants`); }}><Icon name="arrow" size={16}/></button></div></article>)}</div></section>
+          <section className="panel jobs-panel"><div className="panel-heading"><div><div className="section-kicker">OPEN ROLES</div><h2>Opportunities <span className="heading-count">{openJobs.length}</span></h2></div><a className="text-button" href="/opportunities">Manage opportunities <Icon name="arrow" size={15}/></a></div><div className="job-grid">{openJobs.slice(0, 3).map((job) => <article className="job-card" key={job.id}><div className="job-card-top"><span className={`company-logo ${job.color}`}>{job.logo}</span></div><h3>{job.title}</h3><p className="job-company">{job.company}<span>·</span>{job.type}</p><p className="job-location">{job.location}</p><div className="job-card-bottom"><span className="stat-muted">Published role</span><span><strong>{job.applicants}</strong> applicants</span><a href={`/applications?jobId=${job.id}`} aria-label={`View ${job.title} applicants`}><Icon name="arrow" size={16}/></a></div></article>)}{!openJobs.length && <div className="empty-state">You have no published opportunities. Post your first role to get started.</div>}</div></section>
 
           <footer className="page-footer"><span>Made for people building what&apos;s next <span>✳</span></span><span>HireTrack · Placement season 2026</span></footer>
         </div>

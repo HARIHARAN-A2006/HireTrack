@@ -105,6 +105,13 @@ You do not need to download PostgreSQL, Docker, or the Supabase command-line too
 
 Run this migration once in a new project. If Supabase displays an error, stop and copy the exact error text; do not repeatedly run the entire migration, because database types and triggers may already have been created.
 
+### Add recruiter, messaging, and interview workflows
+
+1. In Supabase SQL Editor, choose **New query**.
+2. Open [0002_recruiter_workflows.sql](</D:/HireTrack/supabase/migrations/0002_recruiter_workflows.sql>) on your computer, copy all of its contents, and paste it into the query.
+3. Click **Run** once and wait for the success result. This adds company-scoped recruiters, recruiter assignments, private interview notes and candidate-visible feedback, application messages, and saved activity records.
+4. If you already ran `0001_initial_schema.sql` and it reported that `app_role` exists, **do not run 0001 again**. Run only `0002` now. If `0002` reports a missing table or function, stop and share the complete error before continuing.
+
 ## Part 5: Set the sign-in URLs in Supabase
 
 This lets account-confirmation links return to your local website.
@@ -234,6 +241,17 @@ Run this seed script only once; running it again creates another sample company 
 
 If there are no candidates yet, first apply to one of the jobs as the student account.
 
+### Recruiter check
+
+1. Sign out of the student account and use **Create an account** to register a separate account for the company recruiter.
+2. Sign back in as the placement officer.
+3. Open **Recruiter access** from the placement dashboard, select the company, enter the recruiter account email, and select **Assign recruiter**.
+4. Sign out, then sign in using the recruiter account. HireTrack should open its recruiter workspace.
+5. Confirm the recruiter sees only applicants to jobs for the assigned company. Use the company-opportunities panel to post or close a role.
+6. Schedule an interview with a meeting link. Add a private recruiter note and separate candidate feedback.
+7. Open a candidate conversation and send a message. Sign in as the student and confirm the message and any candidate feedback are visible in their account.
+8. Return to the officer account and remove the recruiter's company access from **Recruiter access**. Confirm the recruiter no longer sees those candidates or company roles.
+
 ## Part 11: Put the code on GitHub
 
 The project folder is not a Git repository yet, so do this once.
@@ -326,6 +344,11 @@ If you change a Vercel environment variable later, redeploy the project so the n
 - [ ] Student can enrich the profile from GitHub.
 - [ ] Application is still present after refreshing the page.
 - [ ] Officer can create a job and update application stages.
+- [ ] Placement officer can assign a company recruiter; recruiter data is limited to assigned companies.
+- [ ] Recruiter can manage company opportunities, review applicants, schedule interviews, and write internal notes.
+- [ ] Candidate can see only feedback intended for them and message the placement/recruiting team.
+- [ ] Application status and conversation persist after signing out and back in.
+- [ ] Password reset works using the account email.
 - [ ] The student account cannot use officer-only actions.
 - [ ] The app works from the public Vercel URL.
 - [ ] README, screenshots, API routes, and database relationship diagram are ready for submission.
@@ -336,12 +359,14 @@ If you change a Vercel environment variable later, redeploy the project so the n
 | --- | --- |
 | `pnpm` or `npm` is not recognized | Install Node.js LTS and pnpm, then close and reopen PowerShell. |
 | Browser says it cannot reach `localhost:3000` | Start the app with `pnpm dev` from `D:\HireTrack`; keep that PowerShell window open. |
-| App still shows the demo | Confirm `.env.local` exists directly inside `D:\HireTrack`, check the two variable names, save the file, and restart `pnpm dev`. |
+| Dashboard asks you to connect Supabase | Confirm `.env.local` exists directly inside `D:\HireTrack`, check both variable names, save the file, and restart `pnpm dev`. |
 | Supabase says invalid API key | Copy the **publishable** key for the same Supabase project whose URL you entered. Do not copy the secret key. |
 | Student sees no jobs | Sign in as officer and run `supabase/seed.sql`, or publish a job from the officer dashboard. |
 | Officer sees the student portal | Recheck the officer email in the role-update SQL, then sign out and sign in again. |
 | Vercel says a variable is missing | Add both Supabase variables in Vercel project settings and redeploy. |
 | Login or confirmation returns to the wrong page | Check Supabase Site URL and Redirect URLs against your exact local or Vercel URL. |
+| Recruiter sees no company or candidate data | Confirm migration `0002_recruiter_workflows.sql` completed and the officer assigned the recruiter's registered email to the correct company. |
+| Student cannot start a conversation | Assign a recruiter to the company or make sure a placement officer account exists; a contact must be assigned to the application. |
 
 ## Official downloads and references
 
