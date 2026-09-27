@@ -4,6 +4,10 @@ import { getSupabaseConfig } from "@/lib/supabase";
 export type AppRole = "student" | "officer" | "recruiter";
 export type AuthContext = { supabase: SupabaseClient; userId: string; role: AppRole };
 
+export function isTransientServiceError(error: { message?: string } | null | undefined) {
+  return /fetch failed|network error|timed? ?out|econn|enotfound/i.test(error?.message || "");
+}
+
 export async function authenticateRequest(request: Request): Promise<AuthContext | Response> {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return Response.json({ error: "Sign in to continue." }, { status: 401 });
@@ -15,8 +19,12 @@ export async function authenticateRequest(request: Request): Promise<AuthContext
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   const { data: userData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !userData.user) return Response.json({ error: "Your session is invalid or has expired." }, { status: 401 });
+  if (authError || !userData.user) {
+    if (isTransientServiceError(authError)) return Response.json({ error: "The authentication service is temporarily unavailable. Check your connection and try again." }, { status: 503 });
+    return Response.json({ error: "Your session is invalid or has expired." }, { status: 401 });
+  }
   const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", userData.user.id).single();
+  if (isTransientServiceError(profileError)) return Response.json({ error: "The HireTrack database is temporarily unavailable. Check your connection and try again." }, { status: 503 });
   if (profileError || !profile) return Response.json({ error: "Your HireTrack profile could not be found." }, { status: 403 });
   return { supabase, userId: userData.user.id, role: profile.role as AppRole };
 }

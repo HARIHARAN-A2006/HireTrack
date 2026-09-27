@@ -77,10 +77,10 @@ If `node`, `npm`, or `pnpm` is still “not recognized,” restart Windows once 
    pnpm dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the HireTrack placement dashboard.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser. Before Supabase is connected, you should see a **Connect your database** message. That is expected; the live placement dashboard appears after the Supabase setup in the next parts.
 6. Keep the PowerShell window open while using the local website. To stop it, click that window and press **Ctrl+C**. To start it again, run `pnpm dev` from `D:\HireTrack`.
 
-At this point the dashboard is in **demo mode**. The sample content is for preview only. Demo changes are not saved. The next parts connect real storage.
+Keep the development server running. Continue with the next parts to connect real authentication and saved database records.
 
 ## Part 3: Create the Supabase project
 
@@ -137,6 +137,11 @@ Run this migration once in a new project. If Supabase displays an error, stop an
 
 1. Run [0006_preserve_placement_records.sql](</D:/HireTrack/supabase/migrations/0006_preserve_placement_records.sql>) after migration `0005`.
 2. The app deactivates recruiter assignments rather than deleting them. This migration also blocks hard deletion of a company, which would otherwise cascade and erase its jobs and applications.
+
+### Enforce the starting application status
+
+1. Run [0007_protect_student_application_stage.sql](</D:/HireTrack/supabase/migrations/0007_protect_student_application_stage.sql>) after migration `0006`.
+2. This lets student accounts create applications only in the initial **Applied** stage. Later stages remain staff-managed and trigger the saved timeline/audit records.
 
 ## Part 5: Set the sign-in URLs in Supabase
 
@@ -244,7 +249,7 @@ This is optional. Skip it if you want to create your own job from the officer da
 3. Open [seed.sql](</D:/HireTrack/supabase/seed.sql>) in a text editor, copy all its contents, paste them in Supabase, and click **Run**.
 4. Sign in as a student and confirm the two sample jobs appear.
 
-Run this seed script only once; running it again creates another sample company and another pair of jobs.
+You can safely run this seed script again; it skips the sample company and jobs if they already exist.
 
 ## Part 10: Check both user flows
 

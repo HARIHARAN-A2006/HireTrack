@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { authenticateRequest, isAuthFailure } from "@/lib/api-auth";
+import { authenticateRequest, isAuthFailure, isTransientServiceError } from "@/lib/api-auth";
 import { getSupabaseConfig } from "@/lib/supabase";
 
 export async function GET(request: Request) {
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (skill) query = query.contains("skill_tags", [skill]);
   if (status) query = query.eq("status", status);
   const { data, error } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (error) return Response.json({ error: isTransientServiceError(error) ? "The HireTrack database is temporarily unavailable. Check your connection and try again." : error.message }, { status: isTransientServiceError(error) ? 503 : 400 });
   return Response.json({ data });
 }
 
