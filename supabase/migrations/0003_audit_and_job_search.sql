@@ -44,6 +44,40 @@ create policy "Students apply to published jobs before deadline" on public.appli
     )
   );
 
+-- Drafts with no applications can be removed, while published/closed roles
+-- keep their history. Lock the row so a concurrent status change cannot race
+-- with the delete operation.
+create or replace function public.delete_empty_draft_job(target_job_id uuid)
+returns void language plpgsql security definer set search_path = public
+as $$
+declare
+  target_company_id uuid;
+  target_status public.job_status;
+begin
+  if public.current_app_role() not in ('officer', 'recruiter') then
+    raise exception 'Only placement staff can delete a draft opportunity.' using errcode = '42501';
+  end if;
+  select company_id, status into target_company_id, target_status
+    from public.jobs where id = target_job_id for update;
+  if not found then
+    raise exception 'Opportunity not found.' using errcode = 'P0002';
+  end if;
+  if public.current_app_role() = 'recruiter' and not public.is_company_member(target_company_id) then
+    raise exception 'You cannot manage this company opportunity.' using errcode = '42501';
+  end if;
+  if target_status <> 'draft' then
+    raise exception 'Only draft opportunities can be deleted. Close published roles to preserve their records.' using errcode = '23514';
+  end if;
+  if exists (select 1 from public.applications where job_id = target_job_id) then
+    raise exception 'This draft has applications and cannot be deleted.' using errcode = '23503';
+  end if;
+  delete from public.jobs where id = target_job_id;
+end;
+$$;
+revoke all on function public.delete_empty_draft_job(uuid) from public;
+grant execute on function public.delete_empty_draft_job(uuid) to authenticated;
+revoke delete on public.jobs from authenticated;
+
 -- Keep interview ownership and round linkage immutable through browser access.
 drop policy if exists "Assigned staff manage interview rounds" on public.interview_rounds;
 drop policy if exists "Staff insert interview rounds" on public.interview_rounds;
@@ -132,10 +166,25 @@ begin
     insert into public.audit_logs (actor_id, action, entity_type, entity_id, details)
     values (coalesce(auth.uid(), new.created_by), 'job.created', 'job', new.id,
       jsonb_build_object('title', new.title, 'status', new.status));
+  elsif tg_op = 'DELETE' then
+    insert into public.audit_logs (actor_id, action, entity_type, entity_id, details)
+    values (coalesce(auth.uid(), old.created_by), 'job.deleted', 'job', old.id,
+      jsonb_build_object('title', old.title, 'status', old.status));
+    return old;
   elsif old.status is distinct from new.status then
     insert into public.audit_logs (actor_id, action, entity_type, entity_id, details)
     values (coalesce(auth.uid(), new.created_by), 'job.status_changed', 'job', new.id,
       jsonb_build_object('title', new.title, 'from', old.status, 'to', new.status));
+  elsif old.title is distinct from new.title
+    or old.description is distinct from new.description
+    or old.employment_type is distinct from new.employment_type
+    or old.location is distinct from new.location
+    or old.application_deadline is distinct from new.application_deadline
+    or old.skill_tags is distinct from new.skill_tags
+    or old.company_id is distinct from new.company_id then
+    insert into public.audit_logs (actor_id, action, entity_type, entity_id, details)
+    values (coalesce(auth.uid(), new.created_by), 'job.updated', 'job', new.id,
+      jsonb_build_object('title', new.title, 'company_id', new.company_id));
   end if;
   return new;
 end;
@@ -144,7 +193,8 @@ drop trigger if exists jobs_audit_insert on public.jobs;
 create trigger jobs_audit_insert after insert on public.jobs
   for each row execute procedure public.record_job_audit();
 drop trigger if exists jobs_audit_status_update on public.jobs;
-create trigger jobs_audit_status_update after update of status on public.jobs
+drop trigger if exists jobs_audit_update on public.jobs;
+create trigger jobs_audit_update after update or delete on public.jobs
   for each row execute procedure public.record_job_audit();
 
 create or replace function public.record_interview_audit()

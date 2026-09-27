@@ -4,7 +4,7 @@ export async function GET(request: Request) {
   const auth = await authenticateRequest(request);
   if (isAuthFailure(auth)) return auth;
   const params = new URL(request.url).searchParams;
-  let query = auth.supabase.from("applications").select("*, profiles!applications_student_id_fkey(id, full_name, email, student_profiles(university, major, graduation_year, skills, github_username)), jobs(id, title, employment_type, location, companies(name)), application_events(id, from_stage, to_stage, note, created_at), interview_rounds(id, title, scheduled_at, meeting_url, candidate_feedback, status)").order("applied_at", { ascending: false });
+  let query = auth.supabase.from("applications").select("*, profiles!applications_student_id_fkey(id, full_name, email, student_profiles(university, major, graduation_year, skills, github_username, resume_path, resume_file_name)), jobs(id, title, employment_type, location, companies(name)), application_events(id, from_stage, to_stage, note, created_at), interview_rounds(id, title, scheduled_at, meeting_url, candidate_feedback, status)").order("applied_at", { ascending: false });
   const stage = params.get("stage");
   const jobId = params.get("jobId");
   if (stage) query = query.eq("stage", stage);

@@ -10,9 +10,12 @@ HireTrack is a campus placement and candidate progress platform. The app uses Ne
 4. In Supabase SQL Editor, run `supabase/migrations/0001_initial_schema.sql` in a new project.
 5. Run `supabase/migrations/0002_recruiter_workflows.sql` after the initial schema.
 6. Run `supabase/migrations/0003_audit_and_job_search.sql` to record sign-ins, job changes, interview updates, and sent messages.
-7. Start the app with `pnpm dev` and open `http://localhost:3000`.
-8. Register a student account at `/login`. Supabase creates the profile and student profile automatically.
-9. To create the placement officer, register a second account, then promote it in Supabase SQL Editor:
+7. Run `supabase/migrations/0004_private_candidate_resumes.sql` to create private resume storage with candidate-scoped access rules.
+8. Run `supabase/migrations/0005_message_recipient_policy.sql` to ensure messages can only be sent to the other participant in the application.
+9. Run `supabase/migrations/0006_preserve_placement_records.sql` to prevent accidental hard deletion of placement records.
+10. Start the app with `pnpm dev` and open `http://localhost:3000`.
+11. Register a student account at `/login`. Supabase creates the profile and student profile automatically.
+12. To create the placement officer, register a second account, then promote it in Supabase SQL Editor:
 
    ```sql
    update public.profiles
@@ -20,8 +23,8 @@ HireTrack is a campus placement and candidate progress platform. The app uses Ne
    where email = 'officer@example.edu';
    ```
 
-10. Sign in as the officer, post opportunities, and use `/team` to assign company recruiters. Recruiters register first, and the placement officer assigns their account using its email address.
-11. Run `supabase/seed.sql` if you want sample opportunities.
+13. Sign in as the officer, post opportunities, and use `/team` to assign company recruiters. Recruiters register first, and the placement officer assigns their account using its email address.
+14. Run `supabase/seed.sql` if you want sample opportunities.
 
 Without Supabase environment variables, the application asks you to connect Supabase; it does not display invented candidate or company activity. Configure Supabase before using the platform.
 
@@ -42,13 +45,16 @@ All routes return JSON. Authenticated requests send `Authorization: Bearer <Supa
 | --- | --- | --- | --- |
 | `GET` | `/api/jobs?search=&status=` | Public for published jobs; staff can see all | List and filter opportunities |
 | `GET` | `/api/jobs?jobId=<uuid>` | Public for published jobs; staff can see all | Read one opportunity for `/jobs/<uuid>` |
-| `POST` | `/api/jobs` | Officer or recruiter | Create and publish a job; validates title and company |
+| `POST` | `/api/jobs` | Officer or recruiter | Create a draft or publish a job; validates title and company |
+| `PATCH` | `/api/jobs` | Officer or assigned recruiter | Edit role details or change its status |
+| `DELETE` | `/api/jobs?jobId=<uuid>` | Officer or assigned recruiter | Delete only an empty draft; published roles and any role with applications keep their history |
 | `GET` | `/api/applications?stage=&jobId=` | Signed-in user, scoped by RLS | List the student’s applications or staff pipeline |
 | `POST` | `/api/applications` | Student | Apply to a published job; unique constraint prevents duplicates |
 | `PATCH` | `/api/applications` | Officer or recruiter | Move an application to a new stage; database trigger records history |
 | `GET`, `POST`, `PATCH` | `/api/interviews` | Officer or assigned recruiter | Schedule interviews and save private notes separately from candidate-visible feedback |
 | `GET`, `POST`, `PATCH` | `/api/messages` | Application participants | Send, read, and mark messages read in an application conversation |
 | `GET`, `POST`, `DELETE` | `/api/team` | Placement officer | Assign or remove company-scoped recruiter access |
+| `GET` | `/api/resumes/<userId>` | Student owner, placement officer, or assigned recruiter | Redirect to a short-lived download URL for a private resume |
 | `GET` | `/api/activity` | Placement officer or recruiter | View application timeline events |
 | `GET` | `/api/audit` | Placement officer | View sign-ins and durable job, application, interview, and message events |
 | `GET` | `/api/github/[username]` | Public | Fetch and normalize a public GitHub profile and top repositories |
@@ -57,9 +63,9 @@ The application stage values are `applied`, `screening`, `interview`, `offer`, `
 
 ## Database and demo data
 
-Run migrations `0001`, `0002`, then `0003` in order before creating users. They create `profiles`, `student_profiles`, `companies`, `jobs`, `applications`, `interview_rounds`, `application_events`, `audit_logs`, company memberships, messages, and private interview notes. They provide role-based row-level security, company-scoped recruiter access, automatic student profile creation, application history, and database audit events. If `0001` and `0002` were already run, do not run them again; apply only `0003`.
+Run migrations `0001` through `0006` in order before using the complete app. They create `profiles`, `student_profiles`, `companies`, `jobs`, `applications`, `interview_rounds`, `application_events`, `audit_logs`, company memberships, messages, private interview notes, and a private candidate-resume bucket. They provide role-based row-level security, company-scoped recruiter access, automatic student profile creation, application history, database audit events, private resume downloads, participant-scoped messaging, and protection from accidental hard deletion. If `0001` through `0003` were already run, do not run them again except for the documented safe reapplication of an updated `0003`; apply `0004`, `0005`, and `0006` once.
 
-`supabase/seed.sql` creates a sample company and two published jobs. It expects at least one profile to have the officer role. For a clean reset in a disposable project, use Supabase’s migration reset workflow after backing up anything you need.
+`supabase/seed.sql` creates a sample company and two published jobs. It expects at least one profile to have the officer role and skips sample records that already exist. Migration `0003` installs a database function for safely deleting empty drafts and records those deletions in the audit log. Migration `0004` stores PDF/DOC/DOCX resumes in a private bucket, limited to 5 MB per file; the staff download route creates a 90-second signed URL after the database checks the requester's access. For a clean reset in a disposable project, use Supabase’s migration reset workflow after backing up anything you need.
 
 ## Architecture
 
@@ -100,7 +106,7 @@ When a student applies, the API verifies the Supabase session and student role, 
 ## Deploy for a free classroom demo
 
 1. Push this repository to GitHub.
-2. Create a Supabase project. Apply migrations `0001`, `0002`, and `0003`, create the officer account, promote its profile, assign recruiters from `/team`, and optionally run the seed SQL.
+2. Create a Supabase project. Apply migrations `0001` through `0006`, create the officer account, promote its profile, assign recruiters from `/team`, and optionally run the seed SQL.
 3. Import the repository into Vercel as a Next.js project.
 4. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to Vercel’s environment variables for Preview and Production.
 5. Deploy, then add the production domain to Supabase Auth’s Site URL and redirect URL allowlist.

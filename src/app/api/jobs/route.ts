@@ -81,9 +81,72 @@ export async function PATCH(request: Request) {
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return Response.json({ error: "Send a valid JSON request body." }, { status: 400 }); }
   const jobId = typeof body.jobId === "string" ? body.jobId : "";
-  const status = typeof body.status === "string" ? body.status : "";
-  if (!/^[0-9a-f-]{36}$/i.test(jobId) || !["draft", "published", "closed"].includes(status)) return Response.json({ error: "Provide a valid opportunity and status." }, { status: 422 });
-  const { data, error } = await auth.supabase.from("jobs").update({ status, updated_at: new Date().toISOString() }).eq("id", jobId).select("id, status").single();
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (!/^[0-9a-f-]{36}$/i.test(jobId)) return Response.json({ error: "Provide a valid opportunity ID." }, { status: 422 });
+  const updates: Record<string, string | string[] | null> = { updated_at: new Date().toISOString() };
+  if (typeof body.title === "string") {
+    const title = body.title.trim();
+    if (title.length < 2 || title.length > 120) return Response.json({ error: "Role title must be between 2 and 120 characters." }, { status: 422 });
+    updates.title = title;
+  }
+  if (typeof body.employmentType === "string") {
+    if (!["Full-time", "Internship", "Part-time", "Contract"].includes(body.employmentType)) return Response.json({ error: "Choose a valid employment type." }, { status: 422 });
+    updates.employment_type = body.employmentType;
+  }
+  if (typeof body.location === "string") {
+    const location = body.location.trim();
+    if (location.length > 200) return Response.json({ error: "Location must be 200 characters or fewer." }, { status: 422 });
+    updates.location = location || "Remote";
+  }
+  if (typeof body.description === "string") {
+    const description = body.description.trim();
+    if (description.length > 10000) return Response.json({ error: "Role details must be 10,000 characters or fewer." }, { status: 422 });
+    updates.description = description;
+  }
+  if (Object.hasOwn(body, "applicationDeadline")) {
+    const deadline = body.applicationDeadline;
+    if (deadline === null || deadline === "") updates.application_deadline = null;
+    else if (typeof deadline === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deadline) && !Number.isNaN(Date.parse(`${deadline}T00:00:00.000Z`)) && new Date(`${deadline}T00:00:00.000Z`).toISOString().slice(0, 10) === deadline) updates.application_deadline = deadline;
+    else return Response.json({ error: "Enter a valid application deadline." }, { status: 422 });
+  }
+  if (Object.hasOwn(body, "skills")) {
+    if (!Array.isArray(body.skills) || body.skills.some((skill) => typeof skill !== "string" || skill.trim().length > 80)) return Response.json({ error: "Skills must be a list of text values up to 80 characters each." }, { status: 422 });
+    updates.skill_tags = body.skills.map((skill) => (skill as string).trim()).filter(Boolean).slice(0, 30);
+  }
+  if (typeof body.status === "string") {
+    if (!["draft", "published", "closed"].includes(body.status)) return Response.json({ error: "Choose a valid opportunity status." }, { status: 422 });
+    updates.status = body.status;
+  }
+  if (auth.role === "officer" && typeof body.company === "string") {
+    const companyName = body.company.trim();
+    if (companyName.length < 2 || companyName.length > 100) return Response.json({ error: "Company name must be between 2 and 100 characters." }, { status: 422 });
+    const { data: existing, error: companyLookupError } = await auth.supabase.from("companies").select("id").ilike("name", companyName).limit(1).maybeSingle();
+    if (companyLookupError) return Response.json({ error: companyLookupError.message }, { status: 400 });
+    let companyId = existing?.id;
+    if (!companyId) {
+      const { data: created, error: createError } = await auth.supabase.from("companies").insert({ name: companyName, created_by: auth.userId }).select("id").single();
+      if (createError || !created) return Response.json({ error: createError?.message ?? "Could not save this company." }, { status: 400 });
+      companyId = created.id;
+    }
+    updates.company_id = companyId;
+  } else if (Object.hasOwn(body, "company")) {
+    return Response.json({ error: "Recruiters cannot change the company assigned to an opportunity." }, { status: 403 });
+  }
+  if (Object.keys(updates).length === 1) return Response.json({ error: "Provide at least one opportunity field to update." }, { status: 422 });
+  const { data, error } = await auth.supabase.from("jobs").update(updates).eq("id", jobId).select("*, companies(name, logo_url), applications(count)").single();
+  if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 400 });
   return Response.json({ data });
+}
+
+export async function DELETE(request: Request) {
+  const auth = await authenticateRequest(request);
+  if (isAuthFailure(auth)) return auth;
+  if (!( ["officer", "recruiter"] as string[]).includes(auth.role)) return Response.json({ error: "Only placement staff can delete opportunities." }, { status: 403 });
+  const jobId = new URL(request.url).searchParams.get("jobId") || "";
+  if (!/^[0-9a-f-]{36}$/i.test(jobId)) return Response.json({ error: "Provide a valid opportunity ID." }, { status: 422 });
+  const { error } = await auth.supabase.rpc("delete_empty_draft_job", { target_job_id: jobId });
+  if (error) {
+    const status = error.code === "P0002" ? 404 : error.code === "42501" ? 403 : ["23514", "23503"].includes(error.code || "") ? 409 : 400;
+    return Response.json({ error: error.message }, { status });
+  }
+  return Response.json({ success: true });
 }

@@ -120,6 +120,24 @@ Run this migration once in a new project. If Supabase displays an error, stop an
 4. Run `0003` only after `0002` has completed successfully. If `0001` and `0002` were already run, apply only `0003`.
 5. If you applied an earlier copy of `0003`, run the current file again. It replaces its policies and triggers safely and includes the rule that blocks applications after a role's deadline.
 
+### Add private resume uploads
+
+1. In Supabase SQL Editor, choose **New query**.
+2. Open [0004_private_candidate_resumes.sql](</D:/HireTrack/supabase/migrations/0004_private_candidate_resumes.sql>), copy its entire contents, paste it into the query, and click **Run**. Do this after migrations `0001`, `0002`, and `0003` have succeeded.
+3. The migration creates a **private** `candidate-resumes` storage bucket and allows PDF, DOC, or DOCX files up to 5 MB. Your Supabase dashboard currently shows 1 GB of file storage available.
+4. Students upload or replace a resume from their student dashboard. Placement officers can open it from the candidate/application screens. A recruiter can open it only when the student has applied to a job at that recruiter's assigned company.
+5. Staff links use a temporary download URL. Do not make the bucket public or share a signed download link; the app creates a new short-lived link after checking the user's access.
+
+### Secure message recipients
+
+1. Open [0005_message_recipient_policy.sql](</D:/HireTrack/supabase/migrations/0005_message_recipient_policy.sql>) and run it after migrations `0001` through `0004` have succeeded.
+2. This keeps each message addressed to the placement contact for that application, so a signed-in user cannot use the message API to send an application message to an unrelated account.
+
+### Protect placement records from hard deletion
+
+1. Run [0006_preserve_placement_records.sql](</D:/HireTrack/supabase/migrations/0006_preserve_placement_records.sql>) after migration `0005`.
+2. The app deactivates recruiter assignments rather than deleting them. This migration also blocks hard deletion of a company, which would otherwise cascade and erase its jobs and applications.
+
 ## Part 5: Set the sign-in URLs in Supabase
 
 This lets account-confirmation links return to your local website.
@@ -255,72 +273,48 @@ If there are no candidates yet, first apply to one of the jobs as the student ac
 2. Sign back in as the placement officer.
 3. Open **Recruiter access** from the placement dashboard, select the company, enter the recruiter account email, and select **Assign recruiter**.
 4. Sign out, then sign in using the recruiter account. HireTrack should open its recruiter workspace.
-5. Confirm the recruiter sees only applicants to jobs for the assigned company. Use the company-opportunities panel to post or close a role.
+5. Confirm the recruiter sees only applicants to jobs for the assigned company and can open the resume from a candidate row after the student uploads one. Use the company-opportunities panel to post, edit, publish, or close a role. Empty drafts can be deleted; a role with applicants cannot be deleted.
 6. Schedule an interview with a meeting link. Add a private recruiter note and separate candidate feedback.
 7. Open a candidate conversation and send a message. Sign in as the student and confirm the message and any candidate feedback are visible in their account.
 8. Return to the officer account and remove the recruiter's company access from **Recruiter access**. Confirm the recruiter no longer sees those candidates or company roles.
 
-## Part 11: Put the code on GitHub
+## Part 11: Save and publish future code changes
 
-The project folder is not a Git repository yet, so do this once.
+This HireTrack folder is already connected to the `main` branch on GitHub. For changes made on this computer, open PowerShell and run:
 
-1. Create or sign in to a GitHub account.
-2. Open [github.com/new](https://github.com/new).
-3. Name the repository `hiretrack`.
-4. Choose **Public** if your class needs to view the code, or **Private** if you want to restrict who can see it.
-5. Leave **Add a README**, **Add .gitignore**, and **Choose a license** unchecked. The project already has a README and `.gitignore`.
-6. Click **Create repository**. Keep the page open so you can copy the repository URL.
-7. Open PowerShell and run:
+```powershell
+Set-Location D:\HireTrack
+git status
+git add .
+git status
+```
 
-   ```powershell
-   Set-Location D:\HireTrack
-   git init -b main
-   git add .
-   git status
-   ```
-
-8. Review the `git status` output. It should list project files to commit. It must **not** list `.env.local`, `node_modules`, or `.next`.
-9. Save the first version:
+2. Review the second `git status` output before saving. It should list your project changes and must **not** include `.env.local`, `node_modules`, or `.next`.
+3. Save and publish the changes:
 
    ```powershell
-   git commit -m "Build HireTrack placement platform"
+   git commit -m "Describe the HireTrack update"
+   git push origin main
    ```
 
-   If Git asks who you are, use the name and email associated with your GitHub account:
+   If Git says there is nothing to commit, the changes are already saved. If it asks you to sign in, complete the GitHub browser sign-in. A push to `main` normally starts a Vercel deployment when the repository is connected. [GitHub repository guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories)
 
-   ```powershell
-   git config --global user.name "Hariharan"
-   git config --global user.email "YOUR_GITHUB_EMAIL"
-   ```
-
-   Then repeat the commit command.
-
-10. Connect the local folder to the GitHub repository. Replace the sample URL with the URL GitHub showed you:
-
-   ```powershell
-   git remote add origin https://github.com/YOUR_GITHUB_USERNAME/hiretrack.git
-   git push -u origin main
-   ```
-
-11. If Git asks you to sign in, follow the browser sign-in window. Refresh the GitHub repository page; you should see the HireTrack files. [GitHub repository creation guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
-
-## Part 12: Publish the website with Vercel
+## Part 12: Deploy the website with Vercel
 
 The frontend and API are both in this Next.js project, so Vercel publishes them together. You do not need a separate Render account or API server.
 
 1. Open [vercel.com](https://vercel.com/) and sign in using GitHub.
-2. Choose **Add New… → Project** (or **New Project**).
-3. Find the `hiretrack` GitHub repository and choose **Import**. If it is missing, use the GitHub account selector or grant Vercel access to that repository.
-4. On the project configuration page, confirm:
+2. Open the existing **hire-track** project. It is already connected to the HireTrack GitHub repository.
+3. Open **Deployments**. A push to `main` should create a new deployment. If no deployment starts, use **Create Deployment**, enter `main` in **Branch, Commit, or URL**, and create the deployment.
+4. If you are setting up Vercel again from scratch, import the `HARIHARAN-A2006/HireTrack` repository and confirm:
    - Framework preset: **Next.js**
    - Root directory: `./` (the repository root)
    - Build command and output settings: leave the defaults
-5. Open **Environment Variables** and add the same two names and values that are in `.env.local`:
+5. In **Settings → Environment Variables**, confirm these two values from `.env.local` are present for **Production**, **Preview**, and **Development**:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. Choose the Production, Preview, and Development environments if Vercel asks where each variable should apply.
-7. Click **Deploy** and wait for the build to finish.
-8. Open the Vercel URL when it appears. The app should load with real Supabase data. Vercel can create deployments from a connected Git repository and lets you configure the project root and environment variables during setup. [Vercel Git deployment](https://vercel.com/docs/git)
+6. If you add or change environment variables, start a new deployment so the change is included.
+7. Open the latest deployment. Continue only after its status says **Ready**; open the deployment URL to view the live app. [Vercel Git deployment](https://vercel.com/docs/git)
 
 ## Part 13: Allow the deployed URL in Supabase
 
@@ -350,10 +344,12 @@ If you change a Vercel environment variable later, redeploy the project so the n
 - [ ] Student profile displays Hariharan and the correct college.
 - [ ] Student can browse published jobs and apply once to a job.
 - [ ] Student can enrich the profile from GitHub.
+- [ ] Student can upload or remove a private PDF/DOC/DOCX resume; authorized officers and assigned recruiters can download it.
 - [ ] Application is still present after refreshing the page.
 - [ ] Officer can create a job and update application stages.
 - [ ] Placement officer can assign a company recruiter; recruiter data is limited to assigned companies.
 - [ ] Recruiter can manage company opportunities, review applicants, schedule interviews, and write internal notes.
+- [ ] Officer or assigned recruiter can edit job details; only an empty draft can be permanently deleted.
 - [ ] Candidate can see only feedback intended for them and message the placement/recruiting team.
 - [ ] Application status and conversation persist after signing out and back in.
 - [ ] Password reset works using the account email.

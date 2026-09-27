@@ -28,13 +28,31 @@ export default function MessagesPage() {
     setBusy(false);
   })().catch((error) => { setNotice(error instanceof Error ? error.message : "Could not load messages."); setBusy(false); }); }, [router]);
 
-  useEffect(() => { if (!token || !selectedId) { setMessages([]); return; } void (async () => {
-    const response = await fetch(`/api/messages?applicationId=${selectedId}`, { headers: { Authorization: `Bearer ${token}` } }); const payload = await response.json();
-    if (!response.ok) { setNotice(payload.error || "Could not open this conversation."); setMessages([]); return; }
-    const thread: Message[] = payload.data || []; setMessages(thread);
-    const unread = thread.filter((message) => message.recipient_id === userId && !message.read_at).map((message) => message.id);
-    if (unread.length) await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ messageIds: unread }) });
-  })(); }, [selectedId, token, userId]);
+  useEffect(() => {
+    if (!token || !selectedId) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch(`/api/messages?applicationId=${encodeURIComponent(selectedId)}`, { headers: { Authorization: `Bearer ${token}` } });
+        const payload = await response.json();
+        if (!active) return;
+        if (!response.ok) { setNotice(payload.error || "Could not open this conversation."); return; }
+        const thread: Message[] = payload.data || [];
+        setMessages(thread);
+        const unread = thread.filter((message) => message.recipient_id === userId && !message.read_at).map((message) => message.id);
+        if (unread.length) {
+          const readAt = new Date().toISOString();
+          const readResponse = await fetch("/api/messages", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ messageIds: unread }) });
+          if (active && readResponse.ok) setMessages((current) => current.map((message) => unread.includes(message.id) ? { ...message, read_at: readAt } : message));
+        }
+      } catch {
+        if (active) setNotice("Could not refresh this conversation. Check your connection and try again.");
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 8000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedId, token, userId]);
 
   const selectedApp = applications.find((item) => item.id === selectedId);
   const conversationName = useMemo(() => {
@@ -51,6 +69,6 @@ export default function MessagesPage() {
 
   const home = role === "student" ? "/student" : role === "recruiter" ? "/recruiter" : "/";
   return <main className="workspace-page"><header className="workspace-top"><a className="brand" href={home}><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a><nav><a className="workspace-tab" href={home}>Workspace</a><a className="workspace-tab active" href="/messages">Messages</a></nav><button className="workspace-tab" onClick={async () => { const supabase = createBrowserSupabaseClient(); await logAuthEvent(supabase, "logout"); await supabase.auth.signOut(); router.replace("/login"); }}>Sign out</button></header><div className="workspace-body"><div className="workspace-eyebrow">APPLICATION COMMUNICATIONS</div><h1>Messages<span className="heading-period">.</span></h1><p className="page-subtitle">Keep each conversation connected to the opportunity it belongs to.</p>{notice && <div className="workspace-notice" role="status">{notice}</div>}
-    <section className="message-center">{busy ? <div className="workspace-empty">Loading conversations…</div> : <><aside className="message-list"><h2>Your applications</h2>{applications.map((application) => { const job = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs; const company = Array.isArray(job?.companies) ? job.companies[0]?.name : job?.companies?.name; return <button key={application.id} className={`message-thread-button ${selectedId === application.id ? "selected" : ""}`} onClick={() => setSelectedId(application.id)}><strong>{job?.title || "Opportunity"}</strong><small>{company || (role === "student" ? "Your placement" : "Candidate application")}</small><span>{application.stage}</span></button>; })}{!applications.length && <p className="workspace-empty">Messages become available when an application is submitted.</p>}</aside><section className="message-thread"><div className="message-thread-head"><div><span className="section-kicker">{selectedApp ? "APPLICATION CONVERSATION" : "NO APPLICATION SELECTED"}</span><h2>{conversationName}</h2>{selectedApp && <p>{(Array.isArray(selectedApp.jobs) ? selectedApp.jobs[0] : selectedApp.jobs)?.title}</p>}</div></div><div className="message-history">{messages.map((message) => <article className={`chat-bubble ${message.sender_id === userId ? "mine" : "theirs"}`} key={message.id}><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}{selectedApp && !messages.length && <div className="workspace-empty">No messages yet. Start the conversation with a question or update.</div>}</div><form className="message-compose" onSubmit={(event) => void send(event)}><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={selectedApp ? "Write a message…" : "Choose an application first"} disabled={!selectedApp} maxLength={5000} required/><button className="primary-button" disabled={!selectedApp || sending || !draft.trim()}>{sending ? "Sending…" : "Send"}</button></form></section></>}</section>
+    <section className="message-center">{busy ? <div className="workspace-empty">Loading conversations…</div> : <><aside className="message-list"><h2>Your applications</h2>{applications.map((application) => { const job = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs; const company = Array.isArray(job?.companies) ? job.companies[0]?.name : job?.companies?.name; return <button key={application.id} className={`message-thread-button ${selectedId === application.id ? "selected" : ""}`} onClick={() => { setMessages([]); setSelectedId(application.id); }}><strong>{job?.title || "Opportunity"}</strong><small>{company || (role === "student" ? "Your placement" : "Candidate application")}</small><span>{application.stage}</span></button>; })}{!applications.length && <p className="workspace-empty">Messages become available when an application is submitted.</p>}</aside><section className="message-thread"><div className="message-thread-head"><div><span className="section-kicker">{selectedApp ? "APPLICATION CONVERSATION" : "NO APPLICATION SELECTED"}</span><h2>{conversationName}</h2>{selectedApp && <p>{(Array.isArray(selectedApp.jobs) ? selectedApp.jobs[0] : selectedApp.jobs)?.title}</p>}</div></div><div className="message-history">{messages.map((message) => <article className={`chat-bubble ${message.sender_id === userId ? "mine" : "theirs"}`} key={message.id}><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}{selectedApp && !messages.length && <div className="workspace-empty">No messages yet. Start the conversation with a question or update.</div>}</div><form className="message-compose" onSubmit={(event) => void send(event)}><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={selectedApp ? "Write a message…" : "Choose an application first"} disabled={!selectedApp} maxLength={5000} required/><button className="primary-button" disabled={!selectedApp || sending || !draft.trim()}>{sending ? "Sending…" : "Send"}</button></form></section></>}</section>
   </div></main>;
 }

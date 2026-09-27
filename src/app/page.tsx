@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient, getSupabaseConfig } from "@/lib/supabase";
 import { logAuthEvent } from "@/lib/audit";
@@ -52,7 +53,6 @@ export default function Home() {
   const [jobModal, setJobModal] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
-  const [liveMode, setLiveMode] = useState(false);
   const [accessToken, setAccessToken] = useState("");
   const [officerName, setOfficerName] = useState("Hariharan");
 
@@ -69,7 +69,6 @@ export default function Home() {
       if (profile?.role !== "officer") { router.replace("/login"); return; }
       if (profile.full_name) setOfficerName(profile.full_name);
       setAccessToken(session.access_token);
-      setLiveMode(true);
       const headers = { Authorization: `Bearer ${session.access_token}` };
       const [jobsResponse, appsResponse, activityResponse] = await Promise.all([fetch("/api/jobs", { headers }), fetch("/api/applications", { headers }), fetch("/api/activity", { headers })]);
       if (jobsResponse.ok) {
@@ -142,12 +141,12 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 2600);
   }
 
-  if (!getSupabaseConfig()) return <main className="auth-page"><div className="auth-card"><a className="brand auth-brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a><div className="auth-eyebrow">PLACEMENT WORKSPACE</div><h1>Connect your database<span className="heading-period">.</span></h1><p className="auth-subtitle">The dashboard needs Supabase configured so candidates, applications, and updates are real and saved. Follow the environment setup in SETUP_GUIDE.md.</p><a className="primary-button auth-submit auth-link" href="/login">Continue to sign in</a></div></main>;
+  if (!getSupabaseConfig()) return <main className="auth-page"><div className="auth-card"><Link className="brand auth-brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></Link><div className="auth-eyebrow">PLACEMENT WORKSPACE</div><h1>Connect your database<span className="heading-period">.</span></h1><p className="auth-subtitle">The dashboard needs Supabase configured so candidates, applications, and updates are real and saved. Follow the environment setup in SETUP_GUIDE.md.</p><a className="primary-button auth-submit auth-link" href="/login">Continue to sign in</a></div></main>;
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? "sidebar-open" : ""}`}>
-        <a className="brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a>
+        <Link className="brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></Link>
         <div className="workspace-label">WORKSPACE</div>
         <button className="workspace-switch"><span className="workspace-icon">B</span><span className="workspace-copy"><strong>BHARATH INSTITUTE OF HIGHER EDUCATION AND RESEARCH</strong><small>Placement team</small></span><Icon name="chevron" size={15}/></button>
         <div className="nav-label">MENU</div>
