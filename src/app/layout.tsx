@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "HireTrack — Campus placements, clearly",
   description: "A calmer way to manage campus placements, applications, and candidate progress.",
+  icons: {
+    icon: "/hiretrack-icon.svg",
+    shortcut: "/hiretrack-icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
