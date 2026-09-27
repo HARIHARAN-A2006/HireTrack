@@ -21,6 +21,10 @@ export async function GET(request: Request, context: { params: Promise<{ userId:
     .createSignedUrl(profile.resume_path, 90, { download: safeFileName });
   if (error || !data?.signedUrl) return Response.json({ error: "You do not have access to this resume, or the file is no longer available." }, { status: 404 });
 
+  if (new URL(request.url).searchParams.get("format") === "json") {
+    return Response.json({ url: data.signedUrl }, { headers: { "Cache-Control": "private, no-store" } });
+  }
+
   return new Response(null, {
     status: 302,
     headers: {

@@ -103,4 +103,72 @@ a { color: inherit; text-decoration: none; }
 .sidebar-tip a { border: 0; background: none; padding: 0; color: #357664; font-weight: 650; font-size: 10px; display: flex; align-items: center; gap: 7px; text-decoration: none; }
 @media (max-width: 960px) { .workspace-top { padding: 0 15px; gap: 9px; flex-wrap: wrap; }.workspace-top .brand { flex: 0 0 auto; }.workspace-top nav { order: 3; width: 100%; }.workspace-top { padding-top: 9px; }.workspace-user { margin-left: auto; }.workspace-body { padding: 28px 17px 45px; }.workspace-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }.message-center { grid-template-columns: 220px minmax(0,1fr); } }
 @media (max-width: 620px) { .workspace-top { position: static; }.workspace-top nav { gap: 1px; }.workspace-tab { padding: 8px 7px; font-size: 9px; }.workspace-user { font-size: 9px; }.workspace-body { padding: 23px 12px 35px; }.workspace-body > h1 { font-size: 25px; }.workspace-card-head { align-items: flex-start; flex-direction: column; }.workspace-filters { width: 100%; }.workspace-filters input,.workspace-search { width: 100%; }.workspace-filters select { max-width: 130px; }.opportunity-form,.team-assign-form { grid-template-columns: 1fr; }.opportunity-form > label:nth-child(5),.opportunity-form > label:nth-child(6),.opportunity-form .form-row { grid-column: auto; }.workspace-metrics { gap: 7px; }.workspace-metrics article { padding: 12px; }.workspace-metrics strong { font-size: 20px; }.interview-card { grid-template-columns: 1fr; }.message-center { grid-template-columns: 1fr; }.message-list { max-height: 190px; overflow-y: auto; border-right: 0; border-bottom: 1px solid #edf0ee; }.message-history { min-height: 220px; }.message-compose { align-items: stretch; flex-direction: column; }.message-compose .primary-button { align-self: flex-end; }.student-top-right { flex-wrap: wrap; } }
+
+/* Site-wide dark theme */
+:root { color-scheme: dark; --ink: #e7eee9; --muted: #9baaa1; --line: #303a35; --paper: #111613; --green: #388b72; --green-dark: #2e755f; }
+html, body { background: #111613; color: #e7eee9; }
+body { background: #111613; color: #e7eee9; }
+.sidebar,.topbar,.stat-card,.panel,.workspace-switch,.season-pill,.workspace-card,.workspace-candidate-card,.workspace-metrics article,.workspace-dialog,.message-center,.student-top,.student-section,.job-detail-facts span,.job-modal,.secondary-button,.toast,.auth-card { background-color: #191f1c; color: #e7eee9; border-color: #303a35; }
+.topbar { background: rgba(25,31,28,.94); }
+.workspace-page,.student-page,.job-detail-page { background: #111613; color: #e7eee9; }
+.auth-page { background: radial-gradient(ellipse at 50% 15%,#1b2b23 0%,#111613 58%); }
+.auth-card { box-shadow: 0 18px 55px #0006; }
+.brand,.welcome-row h1,.panel-heading h2,.stat-value,.candidate-cell strong,.role-title,.job-card h3,.student-job-main h3,.workspace-body > h1,.workspace-card-head h2,.workspace-table td strong,.workspace-metrics strong,.student-app-row strong,.github-result > div:first-child,.resume-current strong,.job-detail-card h1 { color: #edf4ef; }
+.breadcrumb strong,.activity-item p strong { color: #d8e4dc; }
+.workspace-page,.workspace-table td,.nav-item,.activity-item p,.student-job-main > p,.student-app-row strong,.workspace-candidate-card h3 { color: #c2cdc5; }
+.workspace-tab,.nav-active,.workspace-tab:hover { color: #9fe0c4; }
+.sidebar,.workspace-top,.student-top,.panel,.workspace-card,.student-section,.message-center,.message-thread-head,.message-compose,.message-list,.workspace-card-head,.workspace-table td,.workspace-table th,.candidate-card-footer,.interview-card,.job-card,.job-card-bottom,.student-job,.student-app-row,.job-detail-apply { border-color: #303a35; }
+.workspace-top { background: rgba(25,31,28,.96); }
+.workspace-tab:hover,.workspace-tab.active,.nav-active,.message-thread-button:hover,.message-thread-button.selected { background: #20372d; color: #b0e8ce; }
+.nav-item:hover,.icon-button:hover,.row-more:hover { background: #252e29; color: #e7eee9; }
+.workspace-switch,.season-pill,.search-box,.workspace-filters input,.workspace-search,.workspace-filters select,.workspace-table select,.feedback-form select,.opportunity-form input,.opportunity-form select,.opportunity-form textarea,.team-assign-form input,.team-assign-form select,.workspace-dialog input,.feedback-form textarea,.conversation-form textarea,.message-compose textarea,.student-job-filters input,.student-job-filters select,.resume-upload-form input[type="file"],.auth-form input,.job-modal input,.job-modal select,.github-form,.github-form input { color: #e2ebe4; background-color: #111613; border-color: #3a4640; }
+.workspace-table th { color: #9eaaa2; background: #171d1a; }
+.workspace-table td,.applications-table td { color: #b4c0b8; }
+.workspace-table tbody tr:hover,.applications-table tbody tr:hover { background: #1e2722; }
+.stat-highlight { background: linear-gradient(115deg,#191f1c 65%,#1d2a23); border-color: #354b3f; }
+.stat-label,.stat-foot,.page-subtitle,.workspace-eyebrow,.workspace-table td small,.student-job-main > small,.student-app-row small,.resume-privacy,.resume-upload-form > small,.student-count,.workspace-candidate-card p,.workspace-candidate-card > small,.job-detail-description,.job-detail-company { color: #9aa89f; }
+.heading-count,.stat-trend,.stat-trend.trend-soft,.progress-track,.job-card-bottom,.message-thread-button span { background-color: #26312b; color: #b3c3b8; }
+.avatar-stack i,.avatar-stack b,.offer-avatars i,.job-applicant-stack i { border-color: #191f1c; }
+.tabs button { color: #9aa89f; }
+.tabs button.tab-active,.text-button,.table-footer button,.activity-link,.workspace-inline-link,.student-message-link,.student-detail-link,.student-top-right > a,.student-top-right button,.job-back-link,.auth-switch button,.auth-link,.profile-back,.github-result a,.resume-current a,.resume-remove { color: #83d4b1; }
+.workspace-inline-link { border: 0; padding: 0; background: transparent; font: inherit; font-size: 10px; font-weight: 600; cursor: pointer; }
+.skill-tags span,.workspace-candidate-card .skill-tags span { color: #b6d7c4; background: #23342a; border-color: #33463a; }
+.workspace-notice,.student-notice,.auth-message { color: #b8e4c8; background: #1b3023; border-color: #355442; }
+.auth-error { color: #ffc0b8; background: #3a2322; }
+.resume-current,.github-repos a,.job-detail-card,.conversation-message { color: #dce6df; background: #202824; border-color: #36413b; }
+.chat-bubble,.conversation-message { color: #dce6df; background: #26312b; }
+.chat-bubble.mine,.conversation-message.outgoing { color: white; background: #367f69; }
+.job-detail-facts span { color: #c3d0c7; }
+.job-modal input::placeholder,.auth-form input::placeholder,.workspace-filters input::placeholder,.student-job-filters input::placeholder { color: #829087; }
+.sidebar-tip { background: #1c2821; border-color: #304238; }
+.brand-mark,.workspace-icon,.candidate-card-avatar,.student-company-icon { background-color: #263b2f; color: #9fdfbe; }
+.nav-count { color: #bdc9c1; background: #202824; border-color: #36413b; }
+.student-stage,.status-applied,.stage-closed { color: #bdc8c0; background: #29312d; }
+.stage-screening,.status-screening { color: #efd39b; background: #3b3324; }
+.stage-interview,.status-interview { color: #c3c8f1; background: #2d2d42; }
+.stage-offer,.status-offer,.job-status.status-published { color: #a6e3bf; background: #203b2c; }
+.stage-rejected,.stage-withdrawn,.status-rejected { color: #f0b0ad; background: #3c2929; }
+.job-status,.status-pill,.heading-count { background-color: #29312d; color: #c1ccc4; }
+.toast { box-shadow: 0 8px 30px #0008; }
+::selection { color: #f2fff7; background: #347b6b; }
+
+@media (max-width: 620px) {
+  .workspace-top nav { scrollbar-width: thin; }
+  .student-app-row { align-items: flex-start; }
+  .student-app-expanded > span:last-child { flex: 0 0 auto; }
+  .message-history { max-height: 50vh; }
+}
+
+/* Keep the resume controls dark even though their base rules are defined later in the stylesheet. */
+.resume-current { color: #dce6df; background: #202824; border-color: #36413b; }
+.resume-current strong { color: #edf4ef; }
+.resume-upload-form label { color: #c4d0c7; }
+.resume-upload-form input[type="file"] { color: #e2ebe4; background: #111613; border-color: #3a4640; }
+.resume-card > p { color: #9aa89f; }
+.resume-current a,.resume-remove { color: #83d4b1; }
+.student-stage.stage-screening,.stage-select.stage-screening { color: #efd39b !important; background: #3b3324 !important; }
+.student-stage.stage-interview,.stage-select.stage-interview { color: #c3c8f1 !important; background: #2d2d42 !important; }
+.student-stage.stage-offer,.stage-select.stage-offer { color: #a6e3bf !important; background: #203b2c !important; }
+.student-stage.stage-rejected,.student-stage.stage-withdrawn,.stage-select.stage-rejected,.stage-select.stage-withdrawn { color: #f0b0ad !important; background: #3c2929 !important; }
+.stage-select.stage-applied,.student-stage.stage-applied { color: #bdc8c0 !important; background: #29312d !important; }
 .resume-card h2 { margin: 7px 0; font-size: 16px; letter-spacing: -.35px; }.resume-card > p { color: #89948c; font-size: 10px; line-height: 1.6; }.resume-upload-form { display: grid; gap: 10px; margin-top: 15px; }.resume-upload-form label { display: grid; gap: 7px; color: #536059; font-size: 10px; font-weight: 600; }.resume-upload-form input[type="file"] { width: 100%; min-height: 38px; padding: 7px; border: 1px solid #e1e7e3; border-radius: 6px; color: #56635a; background: #fff; font: inherit; font-size: 10px; }.resume-upload-form > small { color: #79877d; font-size: 9px; overflow-wrap: anywhere; }.resume-upload-form .primary-button { justify-self: start; }.resume-privacy { display: block; margin-top: 11px; color: #89948c; font-size: 9px; line-height: 1.5; }.resume-current { display: grid; gap: 6px; padding: 10px; border: 1px solid #e7ece8; border-radius: 6px; background: #fafcfb; }.resume-current strong { overflow-wrap: anywhere; color: #45534a; font-size: 10px; }.resume-current a,.resume-remove { justify-self: start; color: #367b68; font-size: 9px; }.resume-remove { border: 0; padding: 0; background: transparent; }
