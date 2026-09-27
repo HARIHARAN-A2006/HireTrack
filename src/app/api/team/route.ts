@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   if (auth.role !== "officer") return Response.json({ error: "Only placement officers can manage recruiter access." }, { status: 403 });
   const [{ data: companies, error: companyError }, { data: memberships, error: memberError }] = await Promise.all([
     auth.supabase.from("companies").select("id, name").order("name"),
-    auth.supabase.from("company_memberships").select("id, active, created_at, companies(id, name), profiles(id, full_name, email)").order("created_at", { ascending: false }),
+    auth.supabase.from("company_memberships").select("id, active, created_at, companies(id, name), recruiter:profiles!company_memberships_user_id_fkey(id, full_name, email)").order("created_at", { ascending: false }),
   ]);
   if (companyError || memberError) return Response.json({ error: companyError?.message ?? memberError?.message }, { status: 400 });
   return Response.json({ companies, memberships });
