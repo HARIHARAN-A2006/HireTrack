@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
+import { logAuthEvent } from "@/lib/audit";
 
 type Stage = "applied" | "screening" | "interview" | "offer" | "rejected" | "withdrawn";
 type StudentDetails = { university?: string; major?: string; graduation_year?: number; skills?: string[]; github_username?: string };
@@ -133,7 +134,7 @@ export default function RecruiterPage() {
     setMessages((current) => [...current, payload.data]); setMessageText(""); setNotice("Message sent.");
   }
 
-  async function signOut() { await createBrowserSupabaseClient().auth.signOut(); router.replace("/login"); }
+  async function signOut() { const supabase = createBrowserSupabaseClient(); await logAuthEvent(supabase, "logout"); await supabase.auth.signOut(); router.replace("/login"); }
 
   return <main className="workspace-page">
     <header className="workspace-top"><a className="brand" href="/"><span className="brand-mark"><span/><span/><span/></span><span>hiretrack<span className="brand-dot">.</span></span></a><nav><a className="workspace-tab active" href="/recruiter">Candidate pipeline</a><a className="workspace-tab" href="/messages">Messages</a></nav><div className="workspace-user"><span>{name}</span><button onClick={signOut}>Sign out</button></div></header>

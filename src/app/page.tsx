@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient, getSupabaseConfig } from "@/lib/supabase";
+import { logAuthEvent } from "@/lib/audit";
 
 type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Rejected" | "Withdrawn";
 type Candidate = { id: string; name: string; initials: string; role: string; company: string; date: string; status: Status; color: string; score: number };
@@ -16,6 +17,7 @@ const navItems = [
   { label: "Candidates", href: "/candidates", icon: "users" },
   { label: "Messages", href: "/messages", icon: "message" },
   { label: "Recruiter access", href: "/team", icon: "users" },
+  { label: "Activity history", href: "/activity", icon: "clock" },
 ];
 const statuses: Status[] = ["Applied", "Screening", "Interview", "Offer", "Rejected", "Withdrawn"];
 
@@ -154,7 +156,7 @@ export default function Home() {
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-tip"><div className="tip-icon"><Icon name="spark" size={16}/></div><strong>Recruiter workspace access</strong><p>Assign company recruiters and keep candidate access scoped to each company.</p><a href="/team">Manage recruiter access <Icon name="arrow" size={14}/></a></div>
-          <button className="profile-switch" onClick={async () => { await createBrowserSupabaseClient().auth.signOut(); router.replace("/login"); }}><span className="avatar avatar-teal">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><span className="workspace-copy"><strong>{officerName}</strong><small>Placement officer · Sign out</small></span><Icon name="dots" size={18}/></button>
+          <button className="profile-switch" onClick={async () => { const supabase = createBrowserSupabaseClient(); await logAuthEvent(supabase, "logout"); await supabase.auth.signOut(); router.replace("/login"); }}><span className="avatar avatar-teal">{officerName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><span className="workspace-copy"><strong>{officerName}</strong><small>Placement officer · Sign out</small></span><Icon name="dots" size={18}/></button>
         </div>
       </aside>
 

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
+import { logAuthEvent } from "@/lib/audit";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,8 +41,9 @@ export default function LoginPage() {
         if (signUpError) throw signUpError;
         if (!data.session) { setMessage("Check your email to confirm your account, then come back to sign in."); return; }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
+        if (data.session) await logAuthEvent(supabase, "login");
       }
       const requestedReturn = new URLSearchParams(window.location.search).get("returnTo");
       const returnTo = requestedReturn?.startsWith("/") && !requestedReturn.startsWith("//") ? requestedReturn : "/";

@@ -112,6 +112,13 @@ Run this migration once in a new project. If Supabase displays an error, stop an
 3. Click **Run** once and wait for the success result. This adds company-scoped recruiters, recruiter assignments, private interview notes and candidate-visible feedback, application messages, and saved activity records.
 4. If you already ran `0001_initial_schema.sql` and it reported that `app_role` exists, **do not run 0001 again**. Run only `0002` now. If `0002` reports a missing table or function, stop and share the complete error before continuing.
 
+### Add account and placement activity audit records
+
+1. In Supabase SQL Editor, choose **New query**.
+2. Open [0003_audit_and_job_search.sql](</D:/HireTrack/supabase/migrations/0003_audit_and_job_search.sql>), copy all its contents, and paste into the new query.
+3. Click **Run** once. This records sign-ins, job posting/status changes, interview updates, and sent messages, and limits the full audit view to placement officers.
+4. Run `0003` only after `0002` has completed successfully. If `0001` and `0002` were already run, apply only `0003`.
+
 ## Part 5: Set the sign-in URLs in Supabase
 
 This lets account-confirmation links return to your local website.
