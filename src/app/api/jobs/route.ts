@@ -119,21 +119,31 @@ export async function PATCH(request: Request) {
   if (auth.role === "officer" && typeof body.company === "string") {
     const companyName = body.company.trim();
     if (companyName.length < 2 || companyName.length > 100) return Response.json({ error: "Company name must be between 2 and 100 characters." }, { status: 422 });
-    const { data: existing, error: companyLookupError } = await auth.supabase.from("companies").select("id").ilike("name", companyName).limit(1).maybeSingle();
-    if (companyLookupError) return Response.json({ error: companyLookupError.message }, { status: 400 });
-    let companyId = existing?.id;
-    if (!companyId) {
-      const { data: created, error: createError } = await auth.supabase.from("companies").insert({ name: companyName, created_by: auth.userId }).select("id").single();
-      if (createError || !created) return Response.json({ error: createError?.message ?? "Could not save this company." }, { status: 400 });
-      companyId = created.id;
+    const { data: currentJob, error: currentJobError } = await auth.supabase.from("jobs").select("company_id, companies(name), applications(count)").eq("id", jobId).maybeSingle();
+    if (currentJobError) return Response.json({ error: currentJobError.message }, { status: 400 });
+    if (!currentJob) return Response.json({ error: "Opportunity not found." }, { status: 404 });
+    const currentCompany = Array.isArray(currentJob.companies) ? currentJob.companies[0] : currentJob.companies;
+    const applicationCount = currentJob.applications?.[0]?.count || 0;
+    if (applicationCount > 0 && currentCompany?.name?.toLowerCase() !== companyName.toLowerCase()) {
+      return Response.json({ error: "An opportunity with applications cannot be moved to another company because that would change which recruiters can access its candidates." }, { status: 409 });
     }
-    updates.company_id = companyId;
+    if (currentCompany?.name?.toLowerCase() !== companyName.toLowerCase()) {
+      const { data: existing, error: companyLookupError } = await auth.supabase.from("companies").select("id").ilike("name", companyName).limit(1).maybeSingle();
+      if (companyLookupError) return Response.json({ error: companyLookupError.message }, { status: 400 });
+      let companyId = existing?.id;
+      if (!companyId) {
+        const { data: created, error: createError } = await auth.supabase.from("companies").insert({ name: companyName, created_by: auth.userId }).select("id").single();
+        if (createError || !created) return Response.json({ error: createError?.message ?? "Could not save this company." }, { status: 400 });
+        companyId = created.id;
+      }
+      updates.company_id = companyId;
+    }
   } else if (Object.hasOwn(body, "company")) {
     return Response.json({ error: "Recruiters cannot change the company assigned to an opportunity." }, { status: 403 });
   }
   if (Object.keys(updates).length === 1) return Response.json({ error: "Provide at least one opportunity field to update." }, { status: 422 });
   const { data, error } = await auth.supabase.from("jobs").update(updates).eq("id", jobId).select("*, companies(name, logo_url), applications(count)").single();
-  if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 400 });
+  if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : error.code === "23514" ? 409 : 400 });
   return Response.json({ data });
 }
 

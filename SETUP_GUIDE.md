@@ -143,6 +143,11 @@ Run this migration once in a new project. If Supabase displays an error, stop an
 1. Run [0007_protect_student_application_stage.sql](</D:/HireTrack/supabase/migrations/0007_protect_student_application_stage.sql>) after migration `0006`.
 2. This lets student accounts create applications only in the initial **Applied** stage. Later stages remain staff-managed and trigger the saved timeline/audit records.
 
+### Keep applicant access with the original company
+
+1. Run [0008_prevent_company_reassignment_with_applications.sql](</D:/HireTrack/supabase/migrations/0008_prevent_company_reassignment_with_applications.sql>) after migration `0007`.
+2. Once a student applies, the opportunity cannot be moved to another company, because that would change which recruiters can view its existing candidates and resumes.
+
 ## Part 5: Set the sign-in URLs in Supabase
 
 This lets account-confirmation links return to your local website.
